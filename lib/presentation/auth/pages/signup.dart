@@ -1,12 +1,13 @@
 import 'package:cinemax/common/helper/navigation/app_navigation.dart';
 import 'package:cinemax/core/configs/theme/app_colors.dart';
+import 'package:cinemax/presentation/auth/pages/signin.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:reactive_button/reactive_button.dart';
 import 'package:flutter/gestures.dart';
 
-class SigninPage extends StatelessWidget {
-  const SigninPage({super.key});
+class SignupPage extends StatelessWidget {
+  const SignupPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,24 +18,24 @@ class SigninPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _signinText(),
+            _signupText(),
               SizedBox(height: 30,),
             _emailTextField(),
               SizedBox(height: 20 ,),
             _passwordTextField(),
             SizedBox(height: 60,),
-            _signinButton(),
+            _signupButton(),
               SizedBox(height: 20,),
-            _signupText(context),
+            _SigninText(context),
           ],
         )
       )
     );
   }
 
-  Widget _signinText() {
+  Widget _signupText() {
     return const Text(
-      'Sign In',
+      'Sign Up',
       style: TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.bold,
@@ -60,9 +61,9 @@ class SigninPage extends StatelessWidget {
     );
   }
 
-  Widget _signinButton() {
+  Widget _signupButton() {
     return ReactiveButton(
-      title: 'Sign In',
+      title: 'Sign Up',
       activeColor: AppColors.primary,
       onPressed: () async{},
       onSuccess: () {},
@@ -70,22 +71,22 @@ class SigninPage extends StatelessWidget {
     );
   }
 
-  Widget _signupText(BuildContext context) {
+  Widget _SigninText(BuildContext context) {
     return Text.rich(
       TextSpan(
         children: [
           const TextSpan(
-            text: 'Don\'t have an account? ',
+            text: 'Already have an account? ',
         style: TextStyle(color: Colors.white),
           ),
           TextSpan(
-            text: 'Sign Up',
+            text: 'Sign In',
             style: TextStyle(
               color: AppColors.primary,
               fontWeight: FontWeight.bold,
             ),
             recognizer: TapGestureRecognizer()..onTap = () {
-              // Navigate to the sign-up page
+              // Navigate to the sign-in page
             AppNavigator.push(context, const SigninPage());  
             },
           ),
