@@ -1,13 +1,20 @@
+import 'package:cinemax/common/helper/message/display_message.dart';
 import 'package:cinemax/common/helper/navigation/app_navigation.dart';
 import 'package:cinemax/core/configs/theme/app_colors.dart';
+import 'package:cinemax/data/auth/models/signup_req_params.dart';
+import 'package:cinemax/domain/auth/usecases/signup.dart';
+import 'package:cinemax/presentation/Home/pages/home.dart';
 import 'package:cinemax/presentation/auth/pages/signin.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:cinemax/service_locator.dart';
 import 'package:flutter/material.dart';
 import 'package:reactive_button/reactive_button.dart';
 import 'package:flutter/gestures.dart';
 
 class SignupPage extends StatelessWidget {
-  const SignupPage({super.key});
+   SignupPage({super.key});
+
+  final TextEditingController _emailCon = TextEditingController();
+  final TextEditingController _passwordCon = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +31,9 @@ class SignupPage extends StatelessWidget {
               SizedBox(height: 20 ,),
             _passwordTextField(),
             SizedBox(height: 60,),
-            _signupButton(),
+            _signupButton(context),
               SizedBox(height: 20,),
-            _SigninText(context),
+            _signinText(context),
           ],
         )
       )
@@ -45,7 +52,8 @@ class SignupPage extends StatelessWidget {
 
   Widget _emailTextField() {
     return TextField(
-      decoration: InputDecoration(
+      controller: _emailCon,
+      decoration: const InputDecoration(
         hintText: 'Email',
         border: OutlineInputBorder(),
       ),
@@ -54,24 +62,36 @@ class SignupPage extends StatelessWidget {
 
   Widget _passwordTextField() {
     return TextField(
-      decoration: InputDecoration(
+      controller: _passwordCon,
+      decoration: const InputDecoration(
         hintText: 'Password',
         border: OutlineInputBorder(),
       ),
     );
   }
 
-  Widget _signupButton() {
+  Widget _signupButton(BuildContext context) {
     return ReactiveButton(
       title: 'Sign Up',
       activeColor: AppColors.primary,
-      onPressed: () async{},
-      onSuccess: () {},
-      onFailure: (error) {},
+      onPressed: () async{
+        await sl<SignupUseCase>().call(
+          params: SignupReqParams(
+            email: _emailCon.text,
+            password: _passwordCon.text,
+          )
+        );
+      },
+      onSuccess: () {
+        AppNavigator.pushAndRemove(context, const HomePage());
+      },
+      onFailure: (error) {
+         DisplayMessage.errorMessage(error, context);
+      },
     );
   }
 
-  Widget _SigninText(BuildContext context) {
+  Widget _signinText(BuildContext context) {
     return Text.rich(
       TextSpan(
         children: [
@@ -87,7 +107,7 @@ class SignupPage extends StatelessWidget {
             ),
             recognizer: TapGestureRecognizer()..onTap = () {
               // Navigate to the sign-in page
-            AppNavigator.push(context, const SigninPage());  
+            AppNavigator.push(context, SigninPage());  
             },
           ),
         ],
