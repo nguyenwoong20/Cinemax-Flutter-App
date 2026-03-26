@@ -1,12 +1,19 @@
+import 'package:cinemax/common/helper/message/display_message.dart';
 import 'package:cinemax/common/helper/navigation/app_navigation.dart';
 import 'package:cinemax/core/configs/theme/app_colors.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:cinemax/data/auth/models/signin_req_params.dart';
+import 'package:cinemax/domain/auth/usecases/signin.dart';
+import 'package:cinemax/presentation/Home/pages/home.dart';
+import 'package:cinemax/service_locator.dart';
 import 'package:flutter/material.dart';
 import 'package:reactive_button/reactive_button.dart';
 import 'package:flutter/gestures.dart';
 
 class SigninPage extends StatelessWidget {
-  const SigninPage({super.key});
+  SigninPage({super.key});
+
+  final TextEditingController _emailCon = TextEditingController();
+  final TextEditingController _passwordCon = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +30,7 @@ class SigninPage extends StatelessWidget {
               SizedBox(height: 20 ,),
             _passwordTextField(),
             SizedBox(height: 60,),
-            _signinButton(),
+            _signinButton(context),
               SizedBox(height: 20,),
             _signupText(context),
           ],
@@ -44,7 +51,8 @@ class SigninPage extends StatelessWidget {
 
   Widget _emailTextField() {
     return TextField(
-      decoration: InputDecoration(
+      controller: _emailCon,
+      decoration: const InputDecoration(
         hintText: 'Email',
         border: OutlineInputBorder(),
       ),
@@ -53,20 +61,30 @@ class SigninPage extends StatelessWidget {
 
   Widget _passwordTextField() {
     return TextField(
-      decoration: InputDecoration(
+      controller: _passwordCon,
+      decoration: const InputDecoration(
         hintText: 'Password',
         border: OutlineInputBorder(),
       ),
     );
   }
 
-  Widget _signinButton() {
+  Widget _signinButton(BuildContext context) {
     return ReactiveButton(
       title: 'Sign In',
       activeColor: AppColors.primary,
-      onPressed: () async{},
-      onSuccess: () {},
-      onFailure: (error) {},
+      onPressed: () async => sl<SigninUseCase>().call(
+        params: SigninReqParams(
+          email: _emailCon.text,
+          password: _passwordCon.text,
+        )
+      ),
+      onSuccess: () {
+        AppNavigator.pushAndRemove(context, const HomePage());
+      },
+      onFailure: (error) {
+        DisplayMessage.errorMessage(error, context);
+      }
     );
   }
 
@@ -86,7 +104,7 @@ class SigninPage extends StatelessWidget {
             ),
             recognizer: TapGestureRecognizer()..onTap = () {
               // Navigate to the sign-up page
-            AppNavigator.push(context, const SigninPage());  
+            AppNavigator.push(context, SigninPage());  
             },
           ),
         ],
