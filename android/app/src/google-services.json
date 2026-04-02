@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "985763535068",
+    "project_id": "appxemphim-fc4e7",
+    "storage_bucket": "appxemphim-fc4e7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:985763535068:android:6220c2cc5cfc588478bc19",
+        "android_client_info": {
+          "package_name": "com.kaleidoscope.watchalong"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDliaFcVqpNm5_0xUcJVq4t08v33RRKjo4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
