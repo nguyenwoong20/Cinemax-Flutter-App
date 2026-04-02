@@ -1,0 +1,203 @@
+// Màn hình phát video, bao gồm trình phát phim, danh sách tập và đề xuất.
+import 'package:flutter/material.dart';
+import '../models/movie_detail_model.dart';
+import '../Components/video_player/custom_video_player.dart';
+import '../Components/episode_server_list.dart';
+import '../Components/comment_section.dart';
+import '../services/history_service.dart';
+
+class VideoPlayerScreen extends StatefulWidget {
+  final MovieDetail movieDetail;
+  final int initialServerIndex;
+  final int initialEpisodeIndex;
+  final Duration? startAt;
+
+  const VideoPlayerScreen({
+    super.key,
+    required this.movieDetail,
+    this.initialServerIndex = 0,
+    this.initialEpisodeIndex = 0,
+    this.startAt,
+  });
+
+  @override
+  State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
+}
+
+class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+  late int _currentServerIndex;
+  late int _currentEpisodeIndex;
+  late List<ServerData> _servers;
+  final HistoryService _historyService = HistoryService();
+  int _lastSaveTime = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentServerIndex = widget.initialServerIndex;
+    _currentEpisodeIndex = widget.initialEpisodeIndex;
+    _convertEpisodes();
+  }
+
+  void _onProgress(Duration position) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastSaveTime > 15000) {
+      _saveProgress(position);
+      _lastSaveTime = now;
+    }
+  }
+
+  void _saveProgress(Duration position) {
+    if (position.inSeconds < 5) return;
+
+    _historyService.saveProgress(
+      MovieProgress(
+        movieSlug: widget.movieDetail.slug,
+        serverIndex: _currentServerIndex,
+        episodeIndex: _currentEpisodeIndex,
+        positionSeconds: position.inSeconds,
+        lastUpdated: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+  }
+
+  void _convertEpisodes() {
+    _servers = widget.movieDetail.episodes
+        .map(
+          (server) => ServerData(
+            name: server.serverName,
+            episodes: server.episodes
+                .map(
+                  (ep) => EpisodeData(
+                    name: ep.name,
+                    slug: ep.slug,
+                    linkEmbed: ep.linkEmbed,
+                    linkM3u8: ep.linkM3u8,
+                  ),
+                )
+                .toList(),
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentServer = widget.movieDetail.episodes[_currentServerIndex];
+    final currentEpisode = currentServer.episodes[_currentEpisodeIndex];
+
+    String videoUrl = currentEpisode.linkM3u8;
+    if (videoUrl.isEmpty) {
+      videoUrl = currentEpisode.linkEmbed;
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Stack(
+                children: [
+                  CustomVideoPlayer(
+                    key: ValueKey(
+                      '${_currentServerIndex}_$_currentEpisodeIndex',
+                    ),
+                    videoUrl: videoUrl,
+                    autoPlay: true,
+                    startAt:
+                        (_currentServerIndex == widget.initialServerIndex &&
+                            _currentEpisodeIndex == widget.initialEpisodeIndex)
+                        ? widget.startAt
+                        : null,
+                    onProgress: _onProgress,
+                  ),
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.movieDetail.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${currentServer.serverName} - ${currentEpisode.name}',
+                            style: const TextStyle(
+                              color: Color(0xFF5BA3F5),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const Divider(color: Colors.grey, height: 1),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: EpisodeServerList(
+                        servers: _servers,
+                        currentServerIndex: _currentServerIndex,
+                        currentEpisodeIndex: _currentEpisodeIndex,
+                        onEpisodeTap: (serverIdx, episodeIdx) {
+                          setState(() {
+                            _currentServerIndex = serverIdx;
+                            _currentEpisodeIndex = episodeIdx;
+                          });
+                        },
+                      ),
+                    ),
+
+                    const Divider(color: Colors.grey, height: 1),
+
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: CommentSection(movieId: widget.movieDetail.slug),
+                    ),
+
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
