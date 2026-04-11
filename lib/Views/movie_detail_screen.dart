@@ -1,5 +1,6 @@
 // Màn hình chi tiết phim, hiển thị thông tin, danh sách diễn viên, tập phim và bình luận.
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../Components/cast_list.dart';
@@ -8,17 +9,14 @@ import '../Components/episode_server_list.dart';
 import '../Components/movie_genre_tags.dart';
 import '../Components/cached_image_widget.dart';
 import '../Components/related_movies_list.dart';
-import '../models/movie_detail_model.dart';
 import '../models/movie_model.dart';
-import '../services/movie_service.dart';
-import '../services/saved_movie_service.dart';
+import '../providers/movie_detail_provider.dart';
 import '../utils/app_snackbar.dart';
 import 'video_player_screen.dart';
 
 import '../Components/movie_detail/movie_info_header.dart';
 import '../Components/movie_detail/movie_action_buttons.dart';
 import '../Components/movie_detail/movie_synopsis.dart';
-import '../services/history_service.dart';
 
 class MovieDetailScreen extends StatefulWidget {
   final String movieId;
@@ -31,434 +29,360 @@ class MovieDetailScreen extends StatefulWidget {
 }
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
-  bool _isSaved = false;
-  bool _isSaveLoading = false;
-  final SavedMovieService _savedMovieService = SavedMovieService();
-  final HistoryService _historyService = HistoryService();
-
-  bool _isLoading = true;
-  String? _errorMessage;
-
-  final MovieService _movieService = MovieService();
-
-  MovieDetail? _movieDetail;
-  List<CastMember> _cast = [];
-  List<ServerData> _servers = [];
-  int _currentServerIndex = 0;
-  int _currentEpisodeIndex = 0;
-  MovieProgress? _savedProgress;
+  MovieDetailProvider? _provider;
 
   @override
   void initState() {
     super.initState();
-    _checkSaveStatus();
+    _provider = MovieDetailProvider()
+      ..initialize(movieId: widget.movieId, movie: widget.movie);
   }
 
-  Future<void> _checkSaveStatus() async {
-    final isSaved = await _savedMovieService.isMovieSaved(widget.movieId);
-    if (mounted) {
-      setState(() => _isSaved = isSaved);
-    }
-    _loadMovieDetail();
-  }
+  Future<void> _toggleSaveMovie(MovieDetailProvider provider) async {
+    final action = await provider.toggleSaveMovie();
+    if (!mounted) return;
 
-  Future<void> _loadMovieDetail() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    final slug = widget.movie?.slug ?? widget.movieId;
-    final movieDetail = await _movieService.getMovieDetailFull(slug);
-    final savedProgress = await _historyService.getProgress(slug);
-
-    if (mounted) {
-      if (movieDetail != null) {
-        setState(() {
-          _movieDetail = movieDetail;
-          _savedProgress = savedProgress;
-          _isLoading = false;
-
-          _cast = movieDetail.actors
-              .map((name) => CastMember(name: name))
-              .toList();
-
-          _servers = movieDetail.episodes
-              .map(
-                (server) => ServerData(
-                  name: server.serverName,
-                  episodes: server.episodes
-                      .map((ep) => EpisodeData(name: ep.name, slug: ep.slug))
-                      .toList(),
-                ),
-              )
-              .toList();
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Không thể tải thông tin phim';
-        });
-      }
-    }
-  }
-
-  Future<void> _toggleSaveMovie() async {
-    if (_isSaveLoading) return;
-
-    setState(() => _isSaveLoading = true);
-
-    try {
-      if (_isSaved) {
-        final response = await _savedMovieService.removeSavedMovie(
-          widget.movieId,
-        );
-        if (response.success && mounted) {
-          setState(() => _isSaved = false);
-          AppSnackBar.showSuccess(context, 'Đã xóa khỏi danh sách lưu');
-        } else if (mounted) {
-          AppSnackBar.showError(
-            context,
-            response.message ?? 'Không thể xóa phim',
-          );
-        }
-      } else {
-        final response = await _savedMovieService.saveMovie(widget.movieId);
-        if (response.success && mounted) {
-          setState(() => _isSaved = true);
-          AppSnackBar.showSuccess(context, 'Đã lưu phim thành công');
-        } else if (mounted) {
-          AppSnackBar.showError(
-            context,
-            response.message ?? 'Không thể lưu phim',
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackBar.showError(context, 'Có lỗi xảy ra');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSaveLoading = false);
-      }
-    }
-  }
-
-  Future<void> _refreshProgress() async {
-    final slug = widget.movie?.slug ?? widget.movieId;
-    final savedProgress = await _historyService.getProgress(slug);
-    if (mounted) {
-      setState(() {
-        _savedProgress = savedProgress;
-      });
+    switch (action) {
+      case SaveMovieAction.saved:
+        AppSnackBar.showSuccess(context, 'Đã lưu phim thành công');
+        break;
+      case SaveMovieAction.removed:
+        AppSnackBar.showSuccess(context, 'Đã xóa khỏi danh sách lưu');
+        break;
+      case SaveMovieAction.failed:
+        AppSnackBar.showError(context, 'Không thể lưu phim');
+        break;
     }
   }
 
   @override
+  void dispose() {
+    _provider?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final providerInstance =
+        _provider ??=
+            MovieDetailProvider()
+              ..initialize(movieId: widget.movieId, movie: widget.movie);
 
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: isDark
-            ? const Color(0xFF0B0E13)
-            : const Color(0xFFF5F5F5),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    return ChangeNotifierProvider<MovieDetailProvider>.value(
+      value: providerInstance,
+      child: Consumer<MovieDetailProvider>(
+        builder: (context, provider, child) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (_errorMessage != null) {
-      return Scaffold(
-        backgroundColor: isDark
-            ? const Color(0xFF0B0E13)
-            : const Color(0xFFF5F5F5),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              Text(_errorMessage!, style: TextStyle(color: Colors.grey[600])),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _loadMovieDetail,
-                child: const Text('Thử lại'),
+          if (provider.isLoading) {
+            return Scaffold(
+              backgroundColor: isDark
+                  ? const Color(0xFF0B0E13)
+                  : const Color(0xFFF5F5F5),
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                leading: IconButton(
+                  icon: Icon(
+                    Icons.arrow_back,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ),
-            ],
-          ),
-        ),
-      );
-    }
+              body: const Center(child: CircularProgressIndicator()),
+            );
+          }
 
-    final posterUrl = _movieDetail?.posterUrl ?? widget.movie?.posterUrl ?? '';
-    final movieName = _movieDetail?.name ?? widget.movie?.name ?? 'Tên phim';
-    final originName =
-        _movieDetail?.originName ?? widget.movie?.originName ?? '';
-    final year = _movieDetail?.year ?? widget.movie?.year ?? 0;
-    final time = _movieDetail?.time ?? widget.movie?.time ?? '';
-    final quality = _movieDetail?.quality ?? widget.movie?.quality ?? 'HD';
+          if (provider.errorMessage != null) {
+            return Scaffold(
+              backgroundColor: isDark
+                  ? const Color(0xFF0B0E13)
+                  : const Color(0xFFF5F5F5),
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                leading: IconButton(
+                  icon: Icon(
+                    Icons.arrow_back,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    Text(
+                      provider.errorMessage!,
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: provider.loadMovieDetail,
+                      child: const Text('Thử lại'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
 
-    final categoryNames =
-        _movieDetail?.category.map((c) => c.name).toList() ??
-        widget.movie?.category ??
-        [];
+          final posterUrl = provider.posterUrl;
+          final movieName = provider.movieName;
+          final originName = provider.originName;
+          final year = provider.year;
+          final time = provider.time;
+          final quality = provider.quality;
+          final categoryNames = provider.categoryNames;
+          final firstCategorySlug = provider.firstCategorySlug;
+          final content = provider.content;
 
-    final firstCategorySlug = _movieDetail?.category.isNotEmpty == true
-        ? _movieDetail!.category.first.slug
-        : '';
-
-    final content =
-        _movieDetail?.content ?? widget.movie?.content ?? 'Chưa có mô tả.';
-
-    return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF0B0E13)
-          : const Color(0xFFF5F5F5),
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 500,
-            pinned: true,
+          return Scaffold(
             backgroundColor: isDark
                 ? const Color(0xFF0B0E13)
                 : const Color(0xFFF5F5F5),
-            leading: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-            actions: [
-              Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  shape: BoxShape.circle,
-                ),
-                child: _isSaveLoading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : IconButton(
-                        icon: Icon(
-                          _isSaved ? Icons.bookmark : Icons.bookmark_border,
-                          color: _isSaved
-                              ? const Color(0xFF5BA3F5)
-                              : Colors.white,
-                        ),
-                        onPressed: _toggleSaveMovie,
-                      ),
-              ),
-              Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.share, color: Colors.white),
-                  onPressed: () {
-                    final slug = widget.movie?.slug ?? widget.movieId;
-                    final String deepLink =
-                        'https://watchalong428.vercel.app/movie/$slug';
-                    Share.share('Xem phim $movieName tại: $deepLink');
-                  },
-                ),
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CachedImageWidget(
-                    imageUrl: posterUrl.isNotEmpty
-                        ? posterUrl
-                        : 'https://via.placeholder.com/400x600',
-                    fit: BoxFit.cover,
-                  ),
-                  Container(
+            body: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  expandedHeight: 500,
+                  pinned: true,
+                  backgroundColor: isDark
+                      ? const Color(0xFF0B0E13)
+                      : const Color(0xFFF5F5F5),
+                  leading: Container(
+                    margin: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          const Color(0xFF0B0E13).withOpacity(0.7),
-                          const Color(0xFF0B0E13),
-                        ],
+                      color: Colors.black.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 20,
                       ),
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  MovieGenreTags(
-                    genres: categoryNames.isNotEmpty ? categoryNames : ['Phim'],
-                    rating: 8.5,
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  MovieInfoHeader(
-                    movieName: movieName,
-                    originName: originName,
-                    year: year,
-                    time: time,
-                    quality: quality,
-                    isDark: isDark,
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  MovieActionButtons(
-                    watchText: _savedProgress != null
-                        ? 'Tiếp tục xem (Tập ${_savedProgress!.episodeIndex + 1})'
-                        : 'Xem ngay',
-                    onWatchPressed: () {
-                      if (_servers.isNotEmpty &&
-                          _servers[0].episodes.isNotEmpty) {
-                        int startServerIdx = 0;
-                        int startEpisodeIdx = 0;
-                        Duration? startAt;
-
-                        if (_savedProgress != null) {
-                          if (_savedProgress!.serverIndex < _servers.length &&
-                              _savedProgress!.episodeIndex <
-                                  _servers[_savedProgress!.serverIndex]
-                                      .episodes
-                                      .length) {
-                            startServerIdx = _savedProgress!.serverIndex;
-                            startEpisodeIdx = _savedProgress!.episodeIndex;
-                            if (_savedProgress!.positionSeconds > 0) {
-                              startAt = Duration(
-                                seconds: _savedProgress!.positionSeconds,
-                              );
-                            }
-                          }
-                        }
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => VideoPlayerScreen(
-                              movieDetail: _movieDetail!,
-                              initialServerIndex: startServerIdx,
-                              initialEpisodeIndex: startEpisodeIdx,
-                              startAt: startAt,
+                  actions: [
+                    Container(
+                      margin: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: provider.isSaveLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : IconButton(
+                              icon: Icon(
+                                provider.isSaved
+                                    ? Icons.bookmark
+                                    : Icons.bookmark_border,
+                                color: provider.isSaved
+                                    ? const Color(0xFF5BA3F5)
+                                    : Colors.white,
+                              ),
+                              onPressed: () => _toggleSaveMovie(provider),
+                            ),
+                    ),
+                    Container(
+                      margin: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.share, color: Colors.white),
+                        onPressed: () {
+                          final String deepLink =
+                              'https://watchalong428.vercel.app/movie/${provider.slug}';
+                          Share.share('Xem phim $movieName tại: $deepLink');
+                        },
+                      ),
+                    ),
+                  ],
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CachedImageWidget(
+                          imageUrl: posterUrl.isNotEmpty
+                              ? posterUrl
+                              : 'https://via.placeholder.com/400x600',
+                          fit: BoxFit.cover,
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                const Color(0xFF0B0E13).withOpacity(0.7),
+                                const Color(0xFF0B0E13),
+                              ],
                             ),
                           ),
-                        ).then((_) {
-                          _refreshProgress();
-                        });
-                      } else {
-                        AppSnackBar.showError(context, 'Chưa có tập phim nào');
-                      }
-                    },
-                    onSavePressed: _toggleSaveMovie,
-                    isSaved: _isSaved,
-                    isSaveLoading: _isSaveLoading,
-                    isDark: isDark,
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  MovieSynopsis(content: content, isDark: isDark),
-
-                  const SizedBox(height: 24),
-
-                  EpisodeServerList(
-                    servers: _servers,
-                    currentServerIndex: _currentServerIndex,
-                    currentEpisodeIndex: _currentEpisodeIndex,
-                    onEpisodeTap: (serverIndex, episodeIndex) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => VideoPlayerScreen(
-                            movieDetail: _movieDetail!,
-                            initialServerIndex: serverIndex,
-                            initialEpisodeIndex: episodeIndex,
-                          ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
-
-                  const SizedBox(height: 24),
-
-                  CastList(cast: _cast, onSeeAllTap: () {}),
-
-                  const SizedBox(height: 24),
-
-                  CommentSection(movieId: widget.movieId),
-
-                  const SizedBox(height: 24),
-
-                  RelatedMoviesList(
-                    categorySlug: firstCategorySlug,
-                    currentMovieId: widget.movieId,
-                    onMovieTap: (slug) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              MovieDetailScreen(movieId: slug),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        MovieGenreTags(
+                          genres: categoryNames.isNotEmpty
+                              ? categoryNames
+                              : ['Phim'],
+                          rating: 8.5,
                         ),
-                      );
-                    },
-                  ),
 
-                  const SizedBox(height: 80),
-                ],
-              ),
+                        const SizedBox(height: 16),
+
+                        MovieInfoHeader(
+                          movieName: movieName,
+                          originName: originName,
+                          year: year,
+                          time: time,
+                          quality: quality,
+                          isDark: isDark,
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        MovieActionButtons(
+                          watchText: provider.savedProgress != null
+                              ? 'Tiếp tục xem (Tập ${provider.savedProgress!.episodeIndex + 1})'
+                              : 'Xem ngay',
+                          onWatchPressed: () {
+                            if (provider.servers.isNotEmpty &&
+                                provider.servers[0].episodes.isNotEmpty) {
+                              int startServerIdx = 0;
+                              int startEpisodeIdx = 0;
+                              Duration? startAt;
+
+                              if (provider.savedProgress != null) {
+                                if (provider.savedProgress!.serverIndex <
+                                        provider.servers.length &&
+                                    provider.savedProgress!.episodeIndex <
+                                        provider
+                                            .servers[provider
+                                                .savedProgress!
+                                                .serverIndex]
+                                            .episodes
+                                            .length) {
+                                  startServerIdx =
+                                      provider.savedProgress!.serverIndex;
+                                  startEpisodeIdx =
+                                      provider.savedProgress!.episodeIndex;
+                                  if (provider.savedProgress!.positionSeconds >
+                                      0) {
+                                    startAt = Duration(
+                                      seconds:
+                                          provider.savedProgress!.positionSeconds,
+                                    );
+                                  }
+                                }
+                              }
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => VideoPlayerScreen(
+                                    movieDetail: provider.movieDetail!,
+                                    initialServerIndex: startServerIdx,
+                                    initialEpisodeIndex: startEpisodeIdx,
+                                    startAt: startAt,
+                                  ),
+                                ),
+                              ).then((_) {
+                                provider.refreshProgress();
+                              });
+                            } else {
+                              AppSnackBar.showError(
+                                context,
+                                'Chưa có tập phim nào',
+                              );
+                            }
+                          },
+                          onSavePressed: () => _toggleSaveMovie(provider),
+                          isSaved: provider.isSaved,
+                          isSaveLoading: provider.isSaveLoading,
+                          isDark: isDark,
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        MovieSynopsis(content: content, isDark: isDark),
+
+                        const SizedBox(height: 24),
+
+                        EpisodeServerList(
+                          servers: provider.servers,
+                          currentServerIndex: provider.currentServerIndex,
+                          currentEpisodeIndex: provider.currentEpisodeIndex,
+                          onEpisodeTap: (serverIndex, episodeIndex) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => VideoPlayerScreen(
+                                  movieDetail: provider.movieDetail!,
+                                  initialServerIndex: serverIndex,
+                                  initialEpisodeIndex: episodeIndex,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        CastList(cast: provider.cast, onSeeAllTap: () {}),
+
+                        const SizedBox(height: 24),
+
+                        CommentSection(movieId: widget.movieId),
+
+                        const SizedBox(height: 24),
+
+                        RelatedMoviesList(
+                          categorySlug: firstCategorySlug,
+                          currentMovieId: widget.movieId,
+                          onMovieTap: (slug) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    MovieDetailScreen(movieId: slug),
+                              ),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 80),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

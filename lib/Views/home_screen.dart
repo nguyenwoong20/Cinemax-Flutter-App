@@ -1,14 +1,12 @@
 // Màn hình chính của ứng dụng, hiển thị các phim nổi bật, mới và theo danh mục.
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../Components/bottom_navbar.dart';
 import '../Components/home_app_bar.dart';
 import '../Components/movie_section.dart';
 import '../Components/movie_slide.dart';
-import '../models/movie_model.dart';
-import '../models/user_model.dart';
-import '../services/auth_service.dart';
-import '../services/movie_service.dart';
-import '../services/saved_movie_notifier.dart';
+import '../providers/home_provider.dart';
 import '../utils/app_snackbar.dart';
 import 'bookmark_screen.dart';
 import 'movie_detail_screen.dart';
@@ -25,77 +23,36 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  final AuthService _authService = AuthService();
-  final MovieService _movieService = MovieService();
-  User? _user;
-
-  List<Movie> _featuredMovies = [];
-  List<Movie> _newMovies = [];
-  List<Movie> _recommendedMovies = [];
-  bool _isLoading = true;
+  HomeProvider? _homeProvider;
 
   @override
   void initState() {
     super.initState();
-    savedMovieNotifier.addListener(_onSavedMoviesChanged);
-    _loadData();
+    _homeProvider = HomeProvider()..loadData();
+  }
+
+  Future<void> _toggleSaveMovie(HomeProvider homeProvider, int index) async {
+    final action = await homeProvider.toggleFeaturedMovieSave(index);
+
+    if (!mounted) return;
+
+    switch (action) {
+      case SaveMovieAction.removed:
+        AppSnackBar.showSuccess(context, 'Đã xóa khỏi danh sách lưu');
+        break;
+      case SaveMovieAction.saved:
+        AppSnackBar.showSuccess(context, 'Đã lưu phim thành công');
+        break;
+      case SaveMovieAction.failed:
+        AppSnackBar.showError(context, 'Không thể lưu phim');
+        break;
+    }
   }
 
   @override
   void dispose() {
-    savedMovieNotifier.removeListener(_onSavedMoviesChanged);
+    _homeProvider?.dispose();
     super.dispose();
-  }
-
-  void _onSavedMoviesChanged() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    final user = await _authService.getUser();
-
-    final featured = await _movieService.getMoviesLimit(5);
-    final newRelease = await _movieService.getMoviesByYear(2025, limit: 10);
-    final recommended = await _movieService.getMoviesByCategory(
-      'hanh-dong',
-      limit: 10,
-    );
-
-    await savedMovieNotifier.loadSavedMovies();
-
-    if (mounted) {
-      setState(() {
-        _user = user;
-        _featuredMovies = featured;
-        _newMovies = newRelease;
-        _recommendedMovies = recommended;
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _toggleSaveMovie(int index) async {
-    if (index >= _featuredMovies.length) return;
-
-    final movie = _featuredMovies[index];
-    final isCurrentlySaved = savedMovieNotifier.isMovieSaved(movie.slug);
-
-    if (isCurrentlySaved) {
-      final success = await savedMovieNotifier.removeSavedMovie(movie.slug);
-      if (success && mounted) {
-        AppSnackBar.showSuccess(context, 'Đã xóa khỏi danh sách lưu');
-      }
-    } else {
-      final success = await savedMovieNotifier.saveMovie(movie.slug);
-      if (success && mounted) {
-        AppSnackBar.showSuccess(context, 'Đã lưu phim thành công');
-      } else if (mounted) {
-        AppSnackBar.showError(context, 'Không thể lưu phim');
-      }
-    }
   }
 
   void _onNavBarTap(int index) {
@@ -129,27 +86,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final providerInstance = _homeProvider ??= HomeProvider()..loadData();
 
-    final featuredSavedStates = _featuredMovies
-        .map((m) => savedMovieNotifier.isMovieSaved(m.slug))
-        .toList();
+    return ChangeNotifierProvider<HomeProvider>.value(
+      value: providerInstance,
+      child: Consumer<HomeProvider>(
+        builder: (context, homeProvider, child) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final featuredMovies = homeProvider.featuredMovies;
+          final newMovies = homeProvider.newMovies;
+          final recommendedMovies = homeProvider.recommendedMovies;
+          final isLoading = homeProvider.isLoading;
 
-    return Scaffold(
+          final featuredSavedStates = featuredMovies
+              .map((m) => homeProvider.isMovieSaved(m.slug))
+              .toList();
+
+          return Scaffold(
       backgroundColor: isDark
           ? const Color(0xFF0B0E13)
           : const Color(0xFFF5F5F5),
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            HomeAppBar(user: _user),
+            HomeAppBar(user: homeProvider.user),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: _isLoading
+                child: isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : MovieSlide(
-                        movies: _featuredMovies
+                        movies: featuredMovies
                             .map(
                               (m) => {
                                 'title': m.name,
@@ -160,9 +127,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             )
                             .toList(),
                         bookmarkedStates: featuredSavedStates,
-                        onBookmark: _toggleSaveMovie,
+                        onBookmark: (index) =>
+                            _toggleSaveMovie(homeProvider, index),
                         onMovieTap: (index) {
-                          final movie = _featuredMovies[index];
+                          final movie = featuredMovies[index];
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -179,8 +147,8 @@ class _HomeScreenState extends State<HomeScreen> {
             SliverToBoxAdapter(
               child: MovieSection(
                 title: 'Tiếp tục xem',
-                movies: _newMovies,
-                isLoading: _isLoading,
+                movies: newMovies,
+                isLoading: isLoading,
                 onSeeAll: () {},
                 titleIcon: Icons.play_circle_outline,
               ),
@@ -188,16 +156,16 @@ class _HomeScreenState extends State<HomeScreen> {
             SliverToBoxAdapter(
               child: MovieSection(
                 title: 'Phim mới ra mắt',
-                movies: _newMovies,
-                isLoading: _isLoading,
+                movies: newMovies,
+                isLoading: isLoading,
                 onSeeAll: () {},
               ),
             ),
             SliverToBoxAdapter(
               child: MovieSection(
                 title: 'Top 10 tại Việt Nam',
-                movies: _recommendedMovies,
-                isLoading: _isLoading,
+                movies: recommendedMovies,
+                isLoading: isLoading,
                 onSeeAll: () {},
               ),
             ),
@@ -208,6 +176,9 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavbar(
         currentIndex: _currentIndex,
         onTap: _onNavBarTap,
+      ),
+          );
+        },
       ),
     );
   }

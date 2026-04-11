@@ -1,11 +1,9 @@
 // Màn hình danh sách các phòng xem chung, cho phép tạo mới hoặc tham gia.
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../Components/bottom_navbar.dart';
-import '../models/user_model.dart';
-import '../services/auth_service.dart';
-import '../services/socket_service.dart';
-import '../services/watch_room_service.dart';
+import '../providers/watch_rooms_provider.dart';
 import '../utils/app_snackbar.dart';
 import 'bookmark_screen.dart';
 import 'home_screen.dart';
@@ -24,53 +22,41 @@ class WatchRoomsScreen extends StatefulWidget {
 }
 
 class _WatchRoomsScreenState extends State<WatchRoomsScreen> {
-  final WatchRoomService _watchRoomService = WatchRoomService();
-  final AuthService _authService = AuthService();
-  final SocketService _socketService = SocketService();
-
-  bool _isLoading = false;
-  User? _user;
+  WatchRoomsProvider? _watchRoomsProvider;
   final int _currentNavIndex = 3;
 
   @override
   void initState() {
     super.initState();
-    _checkUser();
-    _connectSocket();
+    _watchRoomsProvider = WatchRoomsProvider()..initialize();
   }
 
-  Future<void> _checkUser() async {
-    final user = await _authService.getUser();
-    if (mounted) {
-      setState(() => _user = user);
-    }
+  @override
+  void dispose() {
+    _watchRoomsProvider?.dispose();
+    super.dispose();
   }
 
-  Future<void> _connectSocket() async {
-    final token = await _authService.getToken();
-    _socketService.connect(token: token);
-  }
-
-  void _onJoinRoom(String roomCode) async {
-    if (_user == null) {
+  void _onJoinRoom(WatchRoomsProvider provider, String roomCode) async {
+    if (provider.user == null) {
       AppSnackBar.showWarning(context, 'Vui lòng đăng nhập để tham gia');
       return;
     }
 
-    setState(() => _isLoading = true);
-
     try {
-      final room = await _watchRoomService.joinRoom(roomCode);
+      final room = await provider.joinRoom(roomCode);
 
       if (!mounted) return;
-      setState(() => _isLoading = false);
 
       if (room != null) {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) =>
-                WatchRoomScreen(room: room, isHost: room.hostId == _user!.id),
+                WatchRoomScreen(
+                  room: room,
+                  isHost: room.hostId == provider.user!.id,
+                ),
           ),
         );
       } else {
@@ -81,14 +67,13 @@ class _WatchRoomsScreenState extends State<WatchRoomsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
         AppSnackBar.showError(context, 'Lỗi kết nối: $e');
       }
     }
   }
 
-  void _showCreateRoomDialog() {
-    if (_user == null) {
+  void _showCreateRoomDialog(WatchRoomsProvider provider) {
+    if (provider.user == null) {
       AppSnackBar.showWarning(context, 'Vui lòng đăng nhập để tạo phòng');
       return;
     }
@@ -97,27 +82,24 @@ class _WatchRoomsScreenState extends State<WatchRoomsScreen> {
       context,
       onCreate: (slug, name, poster) async {
         Navigator.pop(context);
-        await _createRoom(slug, name, poster);
+        await _createRoom(provider, slug, name, poster);
       },
     );
   }
 
   Future<void> _createRoom(
+    WatchRoomsProvider provider,
     String movieSlug,
     String movieName,
     String? moviePoster,
   ) async {
-    setState(() => _isLoading = true);
-
-    final room = await _watchRoomService.createRoom(
+    final room = await provider.createRoom(
       movieSlug: movieSlug,
       movieName: movieName,
       moviePoster: moviePoster,
     );
 
     if (mounted) {
-      setState(() => _isLoading = false);
-
       if (room != null) {
         AppSnackBar.showSuccess(context, 'Đã tạo phòng: ${room.roomCode}');
         Navigator.push(
@@ -163,9 +145,16 @@ class _WatchRoomsScreenState extends State<WatchRoomsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final providerInstance = _watchRoomsProvider ??= WatchRoomsProvider()
+      ..initialize();
 
-    return Scaffold(
+    return ChangeNotifierProvider<WatchRoomsProvider>.value(
+      value: providerInstance,
+      child: Consumer<WatchRoomsProvider>(
+        builder: (context, provider, child) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+
+          return Scaffold(
       backgroundColor: isDark
           ? const Color(0xFF0B0E13)
           : const Color(0xFFF5F5F5),
@@ -221,13 +210,14 @@ class _WatchRoomsScreenState extends State<WatchRoomsScreen> {
               ),
 
               const SizedBox(height: 48),
-
-              JoinRoomSection(onJoin: _onJoinRoom, isLoading: _isLoading),
-
+              JoinRoomSection(
+                onJoin: (roomCode) => _onJoinRoom(provider, roomCode),
+                isLoading: provider.isLoading,
+              ),
               const SizedBox(height: 32),
 
               TextButton.icon(
-                onPressed: _showCreateRoomDialog,
+                onPressed: () => _showCreateRoomDialog(provider),
                 icon: const Icon(Icons.add_circle_outline),
                 label: const Text('Tạo phòng mới'),
                 style: TextButton.styleFrom(
@@ -249,6 +239,9 @@ class _WatchRoomsScreenState extends State<WatchRoomsScreen> {
       bottomNavigationBar: BottomNavbar(
         currentIndex: _currentNavIndex,
         onTap: _onNavBarTap,
+      ),
+          );
+        },
       ),
     );
   }

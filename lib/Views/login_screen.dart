@@ -1,7 +1,8 @@
 // Màn hình đăng nhập (Email/Password & Google Login).
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import '../services/auth_service.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/auth_provider.dart';
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
@@ -16,30 +17,15 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
-  bool _isLoading = false;
   bool _obscurePassword = true;
-  String? _errorMessage;
 
-  void _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      setState(() => _errorMessage = 'Vui lòng nhập đầy đủ thông tin');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    final response = await _authService.login(
+  void _login(AuthProvider authProvider) async {
+    final success = await authProvider.login(
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
 
-    setState(() => _isLoading = false);
-
-    if (response.success) {
+    if (success) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -74,127 +60,58 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
-    } else {
-      setState(() => _errorMessage = response.message ?? 'Đăng nhập thất bại');
     }
   }
 
-  void _loginWithGoogle() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  void _loginWithGoogle(AuthProvider authProvider) async {
+    final success = await authProvider.loginWithGoogle();
 
-    try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        scopes: ['email', 'profile'],
-        serverClientId:
-            '985763535068-mdtqp9enodsfref03irhdi8qferjqh4u.apps.googleusercontent.com',
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Colors.white24,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Đăng nhập thành công!',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF2ECC71),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 2),
+        ),
       );
-
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-
-      if (googleUser == null) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final String? idToken = googleAuth.idToken;
-      final String? accessToken = googleAuth.accessToken;
-      // Prefer the account property (recommended by google_sign_in)
-      final String? serverAuthCode = googleUser.serverAuthCode;
-
-      // Debug log - remove or reduce verbosity in production
-      debugPrint('GoogleSignIn - idToken: ${idToken != null}');
-      debugPrint('GoogleSignIn - accessToken: ${accessToken != null}');
-      debugPrint('GoogleSignIn - serverAuthCode: ${serverAuthCode != null}');
-
-      // choose token to send to backend: prefer idToken, fallback to serverAuthCode
-      String? tokenToSend;
-      String tokenType = 'idToken';
-      if (idToken != null) {
-        tokenToSend = idToken;
-        tokenType = 'idToken';
-      } else if (serverAuthCode != null) {
-        tokenToSend = serverAuthCode;
-        tokenType = 'authCode';
-      }
-
-      if (tokenToSend == null) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Không thể lấy token từ Google';
-        });
-        return;
-      }
-
-      // send token + tokenType so backend can handle either idToken or server auth code
-      final response = await _authService.googleLogin(googleToken: tokenToSend, tokenType: tokenType);
-      setState(() => _isLoading = false);
-
-      if (response.success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                      color: Colors.white24,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Đăng nhập thành công!',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-              backgroundColor: const Color(0xFF2ECC71),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              margin: const EdgeInsets.all(16),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        }
-      } else {
-        setState(
-          () => _errorMessage = response.message ?? 'Đăng nhập Google thất bại',
-        );
-      }
-    } catch (e, st) {
-      debugPrint('Google sign-in exception: $e');
-      debugPrint('$st');
-
-      final msg = e.toString().contains('ApiException: 10')
-          ? 'Google Sign-In bị lỗi cấu hình (ApiException: 10). Hãy kiểm tra SHA-1/SHA-256 trong Firebase, bật Google trong Authentication, và tải lại google-services.json rồi flutter clean chạy lại.'
-          : 'Lỗi đăng nhập Google: ${e.toString()}';
-
-      setState(() {
-        _isLoading = false;
-        _errorMessage = msg;
-      });
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final isLoading = authProvider.isLoading;
+    final errorMessage = authProvider.errorMessage;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D1A),
       body: SafeArea(
@@ -256,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(color: Colors.grey[400], fontSize: 15),
                 ),
                 const SizedBox(height: 40),
-                if (_errorMessage != null)
+                if (errorMessage != null)
                   Container(
                     padding: const EdgeInsets.all(14),
                     margin: const EdgeInsets.only(bottom: 20),
@@ -275,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            _errorMessage!,
+                            errorMessage,
                             style: const TextStyle(
                               color: Colors.red,
                               fontSize: 14,
@@ -335,7 +252,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   height: 54,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _login,
+                    onPressed: isLoading ? null : () => _login(authProvider),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF5BA3F5),
                       foregroundColor: Colors.white,
@@ -344,7 +261,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: _isLoading
+                    child: isLoading
                         ? const SizedBox(
                             width: 24,
                             height: 24,
@@ -381,7 +298,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   height: 54,
                   child: OutlinedButton.icon(
-                    onPressed: _isLoading ? null : _loginWithGoogle,
+                    onPressed: isLoading
+                        ? null
+                        : () => _loginWithGoogle(authProvider),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: Colors.grey[700]!),
                       shape: RoundedRectangleBorder(
