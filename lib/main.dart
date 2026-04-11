@@ -14,6 +14,7 @@ import 'Views/login_screen.dart';
 import 'Views/profile_screen.dart';
 import 'Views/register_screen.dart';
 import 'Views/search_screen.dart';
+import 'providers/auth_provider.dart';
 import 'theme_provider.dart';
 import 'utils.dart';
 
@@ -24,8 +25,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => ThemeProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        ChangeNotifierProvider(create: (context) => AuthProvider()),
+      ],
       child: const MyApp(),
     ),
   );
