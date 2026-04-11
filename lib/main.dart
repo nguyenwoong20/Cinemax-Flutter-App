@@ -113,7 +113,7 @@ class _MyAppState extends State<MyApp> {
         return MaterialApp(
           navigatorKey: Utils.navigatorKey,
           navigatorObservers: [routeObserver],
-          title: 'WatchAlong',
+          title: 'Cinema App',
           debugShowCheckedModeBanner: false,
           themeMode: themeProvider.themeMode,
           darkTheme: ThemeProvider.darkTheme,
