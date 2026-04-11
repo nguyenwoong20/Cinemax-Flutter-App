@@ -57,7 +57,7 @@ class HomeAppBar extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Text(
-            'CHILL PHIM',
+            'CinemaX PRO',
             style: TextStyle(
               color: isDark ? Colors.white : Colors.black,
               fontSize: 18,

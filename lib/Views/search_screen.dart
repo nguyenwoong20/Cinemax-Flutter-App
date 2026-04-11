@@ -1,14 +1,13 @@
 // Màn hình tìm kiếm phim, hỗ trợ tìm theo tên hoặc lọc theo danh mục.
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../Components/bottom_navbar.dart';
 import '../Components/search_bar_widget.dart';
 import '../Components/category_filter_list.dart';
 import '../Components/search_results_grid.dart';
 import '../models/movie_model.dart';
-import '../services/movie_service.dart';
-import '../services/saved_movie_notifier.dart';
+import '../providers/search_provider.dart';
 import '../utils/app_snackbar.dart';
 import 'bookmark_screen.dart';
 import 'movie_detail_screen.dart';
@@ -24,200 +23,53 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final MovieService _movieService = MovieService();
   final ScrollController _scrollController = ScrollController();
+  SearchProvider? _searchProvider;
 
   int _currentIndex = 1;
-
-  List<Movie> _movies = [];
-  bool _isLoading = false;
-  bool _isLoadingMore = false;
-  String _searchQuery = '';
-
-  int _currentPage = 1;
-  bool _hasMore = true;
-  static const int _limit = 20;
-
-  Timer? _debounce;
-
-  final Map<String, String> _categorySlugs = {
-    'Tất cả': '',
-    'Hành động': 'hanh-dong',
-    'Tình cảm': 'tinh-cam',
-    'Kinh dị': 'kinh-di',
-    'Hoạt hình': 'hoat-hinh',
-    'Viễn tưởng': 'vien-tuong',
-  };
-
-  late List<String> _categories;
-  String _selectedCategory = 'Tất cả';
 
   @override
   void initState() {
     super.initState();
-    _categories = _categorySlugs.keys.toList();
-
-    savedMovieNotifier.addListener(_onSavedMoviesChanged);
-    if (!savedMovieNotifier.isLoaded) {
-      savedMovieNotifier.loadSavedMovies();
-    }
+    _searchProvider = SearchProvider();
 
     _scrollController.addListener(_onScroll);
-
-    _loadMovies();
   }
 
   @override
   void dispose() {
-    savedMovieNotifier.removeListener(_onSavedMoviesChanged);
+    _searchProvider?.dispose();
     _scrollController.dispose();
     _searchController.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
-  void _onSavedMoviesChanged() {
-    if (mounted) setState(() {});
-  }
-
   void _onScroll() {
+    final provider = _searchProvider;
+    if (provider == null) return;
+
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      if (!_isLoading && !_isLoadingMore && _hasMore) {
-        _loadMoreMovies();
+      if (!provider.isLoading && !provider.isLoadingMore && provider.hasMore) {
+        provider.loadMoreMovies();
       }
     }
   }
 
-  Future<void> _loadMovies() async {
-    if (_isLoading) return;
-    setState(() => _isLoading = true);
+  Future<void> _toggleSaveMovie(SearchProvider provider, Movie movie) async {
+    final action = await provider.toggleSaveMovie(movie);
+    if (!mounted) return;
 
-    try {
-      List<Movie> newMovies;
-
-      if (_searchQuery.isNotEmpty) {
-        newMovies = await _movieService.searchMovies(
-          _searchQuery,
-          page: 1,
-          limit: _limit,
-        );
-      } else {
-        if (_selectedCategory == 'Tất cả') {
-          newMovies = await _movieService.searchMovies(
-            '',
-            page: 1,
-            limit: _limit,
-          );
-        } else {
-          final slug = _categorySlugs[_selectedCategory]!;
-          newMovies = await _movieService.getMoviesByCategory(
-            slug,
-            page: 1,
-            limit: _limit,
-          );
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _movies = newMovies;
-          _currentPage = 1;
-          _hasMore = newMovies.length >= _limit;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _loadMoreMovies() async {
-    if (_isLoadingMore) return;
-    setState(() => _isLoadingMore = true);
-
-    try {
-      List<Movie> newMovies;
-      final nextPage = _currentPage + 1;
-
-      if (_searchQuery.isNotEmpty) {
-        newMovies = await _movieService.searchMovies(
-          _searchQuery,
-          page: nextPage,
-          limit: _limit,
-        );
-      } else {
-        if (_selectedCategory == 'Tất cả') {
-          newMovies = await _movieService.searchMovies(
-            '',
-            page: nextPage,
-            limit: _limit,
-          );
-        } else {
-          final slug = _categorySlugs[_selectedCategory]!;
-          newMovies = await _movieService.getMoviesByCategory(
-            slug,
-            page: nextPage,
-            limit: _limit,
-          );
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _movies.addAll(newMovies);
-          _currentPage = nextPage;
-          _hasMore = newMovies.length >= _limit;
-          _isLoadingMore = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoadingMore = false);
-    }
-  }
-
-  void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-
-    setState(() {
-      _searchQuery = query;
-    });
-
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      _loadMovies();
-    });
-  }
-
-  void _onCategorySelected(String category) {
-    if (_selectedCategory == category) return;
-
-    setState(() {
-      _selectedCategory = category;
-      _searchController.clear();
-      _searchQuery = '';
-    });
-
-    _loadMovies();
-  }
-
-  Future<void> _toggleSaveMovie(Movie movie) async {
-    final slug = movie.slug;
-    final isCurrentlySaved = savedMovieNotifier.isMovieSaved(slug);
-
-    if (isCurrentlySaved) {
-      final success = await savedMovieNotifier.removeSavedMovie(slug);
-      if (success && mounted) {
-        AppSnackBar.showSuccess(context, 'Đã xóa khỏi danh sách lưu');
-      } else if (mounted) {
-        AppSnackBar.showError(context, 'Không thể xóa phim');
-      }
-    } else {
-      final success = await savedMovieNotifier.saveMovie(slug);
-      if (success && mounted) {
+    switch (action) {
+      case SearchSaveAction.saved:
         AppSnackBar.showSuccess(context, 'Đã lưu phim thành công');
-      } else if (mounted) {
+        break;
+      case SearchSaveAction.removed:
+        AppSnackBar.showSuccess(context, 'Đã xóa khỏi danh sách lưu');
+        break;
+      case SearchSaveAction.failed:
         AppSnackBar.showError(context, 'Không thể lưu phim');
-      }
+        break;
     }
   }
 
@@ -250,9 +102,15 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final providerInstance = _searchProvider ??= SearchProvider();
 
-    return Scaffold(
+    return ChangeNotifierProvider<SearchProvider>.value(
+      value: providerInstance,
+      child: Consumer<SearchProvider>(
+        builder: (context, provider, child) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+
+          return Scaffold(
       backgroundColor: isDark
           ? const Color(0xFF0B0E13)
           : const Color(0xFFF5F5F5),
@@ -273,7 +131,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   Expanded(
                     child: SearchBarWidget(
                       controller: _searchController,
-                      onChanged: _onSearchChanged,
+                      onChanged: provider.onSearchChanged,
                       onFilterTap: () {},
                     ),
                   ),
@@ -282,9 +140,12 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
 
             CategoryFilterList(
-              categories: _categories,
-              selectedCategory: _selectedCategory,
-              onCategorySelected: _onCategorySelected,
+              categories: provider.categories,
+              selectedCategory: provider.selectedCategory,
+              onCategorySelected: (category) {
+                _searchController.clear();
+                provider.onCategorySelected(category);
+              },
             ),
 
             const SizedBox(height: 16),
@@ -292,14 +153,13 @@ class _SearchScreenState extends State<SearchScreen> {
             Expanded(
               child: SearchResultsGrid(
                 scrollController: _scrollController,
-                movies: _movies,
-                isLoading: _isLoading && _movies.isEmpty,
-                emptyMessage: _searchQuery.isEmpty
+              movies: provider.movies,
+              isLoading: provider.isLoading && provider.movies.isEmpty,
+              emptyMessage: provider.searchQuery.isEmpty
                     ? 'Không có phim nào'
-                    : 'Không tìm thấy kết quả cho "$_searchQuery"',
-                isBookmarked: (movie) =>
-                    savedMovieNotifier.isMovieSaved(movie.slug),
-                onBookmark: _toggleSaveMovie,
+                : 'Không tìm thấy kết quả cho "${provider.searchQuery}"',
+              isBookmarked: provider.isMovieSaved,
+              onBookmark: (movie) => _toggleSaveMovie(provider, movie),
                 onMovieTap: (movie) {
                   Navigator.push(
                     context,
@@ -312,7 +172,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
 
-            if (_isLoadingMore)
+            if (provider.isLoadingMore)
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: CircularProgressIndicator(
@@ -326,6 +186,9 @@ class _SearchScreenState extends State<SearchScreen> {
       bottomNavigationBar: BottomNavbar(
         currentIndex: _currentIndex,
         onTap: _onNavBarTap,
+      ),
+          );
+        },
       ),
     );
   }
