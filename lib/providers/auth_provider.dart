@@ -68,6 +68,7 @@ class AuthProvider extends ChangeNotifier {
             '985763535068-mdtqp9enodsfref03irhdi8qferjqh4u.apps.googleusercontent.com',
       );
 
+      await googleSignIn.signOut();
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
         _setLoading(false);
@@ -105,7 +106,7 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
 
-      _errorMessage = response.message ?? 'Dang nhap Google that bai';
+      _errorMessage = _mapGoogleErrorMessage(response.message);
       _setLoading(false);
       return false;
     } catch (e) {
@@ -122,6 +123,21 @@ class AuthProvider extends ChangeNotifier {
     await _authService.logout();
     _currentUser = null;
     _setLoading(false);
+  }
+
+  String _mapGoogleErrorMessage(String? message) {
+    if (message == null) return 'Đăng nhập Google thất bại';
+    final m = message.toLowerCase();
+    if (m.contains('already registered with password') || m.contains('already exists with password')) {
+      return 'Email này đã đăng ký bằng mật khẩu. Vui lòng đăng nhập bằng email và mật khẩu.';
+    }
+    if (m.contains('not found') || m.contains('no user')) {
+      return 'Tài khoản không tồn tại.';
+    }
+    if (m.contains('invalid token') || m.contains('token')) {
+      return 'Xác thực Google thất bại. Vui lòng thử lại.';
+    }
+    return message;
   }
 
   void _setLoading(bool value) {

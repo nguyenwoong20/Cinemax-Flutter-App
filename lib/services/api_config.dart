@@ -1,21 +1,25 @@
 // Cấu hình API endpoints và hằng số hệ thống.
 class ApiConfig {
-  static const String baseUrl = 'http://10.0.2.2:4000';
+  static const String baseUrl = 'http://192.168.1.45:4000';
+
+  // Backend phim serverless trên AWS (API Gateway + Lambda + DynamoDB).
+  static const String awsBaseUrl =
+      'https://c0ocqpmzj9.execute-api.ap-southeast-1.amazonaws.com/prod';
 
   static const String authEndpoint = '/api/auth';
   static const String userEndpoint = '/api/user';
   static const String commentEndpoint = '/api/comments';
   static const String movieEndpoint = '/api/movies';
 
-  static String get registerUrl => '$baseUrl$authEndpoint/register';
-  static String get loginUrl => '$baseUrl$authEndpoint/login';
-  static String get verifyEmailUrl => '$baseUrl$authEndpoint/verify-email';
-  static String get googleLoginUrl => '$baseUrl$authEndpoint/google-login';
+  static String get registerUrl => '$awsBaseUrl$authEndpoint/register';
+  static String get loginUrl => '$awsBaseUrl$authEndpoint/login';
+  static String get verifyEmailUrl => '$awsBaseUrl$authEndpoint/verify-email';
+  static String get googleLoginUrl => '$awsBaseUrl$authEndpoint/google-login';
   static String get resendVerifyOtpUrl =>
-      '$baseUrl$authEndpoint/resend-verify-otp';
+      '$awsBaseUrl$authEndpoint/resend-verify-otp';
   static String get forgotPasswordUrl =>
-      '$baseUrl$authEndpoint/forgot-password';
-  static String get resetPasswordUrl => '$baseUrl$authEndpoint/reset-password';
+      '$awsBaseUrl$authEndpoint/forgot-password';
+  static String get resetPasswordUrl => '$awsBaseUrl$authEndpoint/reset-password';
 
   static String updateUserUrl(String userId) => '$baseUrl$userEndpoint/$userId';
 
@@ -24,16 +28,16 @@ class ApiConfig {
   static String get addCommentUrl => '$baseUrl$commentEndpoint/add';
 
   static String getMoviesLimitUrl(int limit) =>
-      '$baseUrl$movieEndpoint/limit/$limit';
+      '$awsBaseUrl$movieEndpoint/limit/$limit';
   static String getMoviesByCategoryUrl(String slug) =>
-      '$baseUrl$movieEndpoint/category/$slug';
+      '$awsBaseUrl$movieEndpoint/category/$slug';
   static String getMoviesByCountryUrl(String slug) =>
-      '$baseUrl$movieEndpoint/country/$slug';
+      '$awsBaseUrl$movieEndpoint/country/$slug';
   static String getMoviesByYearUrl(int year) =>
-      '$baseUrl$movieEndpoint/year/$year';
+      '$awsBaseUrl$movieEndpoint/year/$year';
   static String getMovieDetailUrl(String slug) =>
-      '$baseUrl$movieEndpoint/$slug';
-  static String get searchMoviesUrl => '$baseUrl$movieEndpoint';
+      '$awsBaseUrl$movieEndpoint/$slug';
+  static String get searchMoviesUrl => '$awsBaseUrl$movieEndpoint';
 
   static const String bookmarkEndpoint = '/api/bookmarks';
   static String get getBookmarksUrl => '$baseUrl$bookmarkEndpoint';
