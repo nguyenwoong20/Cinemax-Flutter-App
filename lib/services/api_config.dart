@@ -36,6 +36,8 @@ class ApiConfig {
       '$awsBaseUrl$movieEndpoint/country/$slug';
   static String getMoviesByYearUrl(int year) =>
       '$awsBaseUrl$movieEndpoint/year/$year';
+
+  // Các endpoints mới từ nhánh feature
   static String getMoviesByTypeUrl(String type) =>
       '$awsBaseUrl$movieEndpoint/type/$type';
   static String get hotMoviesUrl => '$awsBaseUrl$movieEndpoint/hot';
@@ -44,6 +46,7 @@ class ApiConfig {
       '$awsBaseUrl$movieEndpoint/$slug';
   static String getMovieCastUrl(String slug) =>
       '$awsBaseUrl$movieEndpoint/$slug/cast';
+
   static String get searchMoviesUrl => '$awsBaseUrl$movieEndpoint';
 
   static const String bookmarkEndpoint = '/api/bookmarks';
