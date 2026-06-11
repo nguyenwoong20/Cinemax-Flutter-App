@@ -1,12 +1,14 @@
 // Component thẻ phim đứng (Vertical), hiển thị trong các danh sách lưới.
 import 'package:flutter/material.dart';
 import 'cached_image_widget.dart';
+import 'rating_badge.dart';
 
 class MovieCard extends StatelessWidget {
   final String title;
   final String imageUrl;
   final String? year;
   final String? genre;
+  final double rating;
   final bool isBookmarked;
   final VoidCallback? onTap;
   final VoidCallback? onBookmark;
@@ -17,6 +19,7 @@ class MovieCard extends StatelessWidget {
     required this.imageUrl,
     this.year,
     this.genre,
+    this.rating = 0,
     this.isBookmarked = false,
     this.onTap,
     this.onBookmark,
@@ -40,6 +43,12 @@ class MovieCard extends StatelessWidget {
               width: double.infinity,
               height: double.infinity,
               borderRadius: BorderRadius.circular(16),
+            ),
+
+            Positioned(
+              top: 8,
+              left: 8,
+              child: RatingBadge(rating: rating),
             ),
 
             Positioned(

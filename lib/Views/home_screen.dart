@@ -7,9 +7,11 @@ import '../Components/home_app_bar.dart';
 import '../Components/movie_section.dart';
 import '../Components/movie_slide.dart';
 import '../providers/home_provider.dart';
+import '../services/movie_service.dart';
 import '../utils/app_snackbar.dart';
 import 'bookmark_screen.dart';
 import 'movie_detail_screen.dart';
+import 'movie_list_screen.dart';
 import 'profile_screen.dart';
 import 'search_screen.dart';
 import 'watch_rooms_screen.dart';
@@ -24,6 +26,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   HomeProvider? _homeProvider;
+  final MovieService _movieService = MovieService();
+
+  void _openList(String title, MoviePageLoader loader) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MovieListScreen(title: title, loader: loader),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -95,7 +107,6 @@ class _HomeScreenState extends State<HomeScreen> {
           final isDark = Theme.of(context).brightness == Brightness.dark;
           final featuredMovies = homeProvider.featuredMovies;
           final newMovies = homeProvider.newMovies;
-          final recommendedMovies = homeProvider.recommendedMovies;
           final isLoading = homeProvider.isLoading;
 
           final featuredSavedStates = featuredMovies
@@ -144,29 +155,98 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
               ),
             ),
+            if (homeProvider.continueWatching.isNotEmpty)
+              SliverToBoxAdapter(
+                child: MovieSection(
+                  title: 'Tiếp tục xem',
+                  movies: homeProvider.continueWatching,
+                  isLoading: isLoading,
+                  onSeeAll: () => _openList(
+                    'Tiếp tục xem',
+                    (page) async =>
+                        page == 1 ? homeProvider.continueWatching : [],
+                  ),
+                  titleIcon: Icons.play_circle_outline,
+                  onRemove: (movie) =>
+                      homeProvider.removeFromContinueWatching(movie.slug),
+                ),
+              ),
             SliverToBoxAdapter(
               child: MovieSection(
-                title: 'Tiếp tục xem',
+                title: 'Phim mới cập nhật',
                 movies: newMovies,
                 isLoading: isLoading,
-                onSeeAll: () {},
-                titleIcon: Icons.play_circle_outline,
+                onSeeAll: () => _openList(
+                  'Phim mới cập nhật',
+                  (page) => _movieService.searchMovies('', page: page),
+                ),
+                titleIcon: Icons.fiber_new_outlined,
               ),
             ),
             SliverToBoxAdapter(
               child: MovieSection(
-                title: 'Phim mới ra mắt',
-                movies: newMovies,
+                title: 'Drama xứ Kim Chi',
+                movies: homeProvider.koreanDramas,
                 isLoading: isLoading,
-                onSeeAll: () {},
+                onSeeAll: () => _openList(
+                  'Drama xứ Kim Chi',
+                  (page) => _movieService.getMoviesByCountry('han-quoc', page: page),
+                ),
               ),
             ),
             SliverToBoxAdapter(
               child: MovieSection(
-                title: 'Top 10 tại Việt Nam',
-                movies: recommendedMovies,
+                title: 'Trường thiên Drama "Tàu"',
+                movies: homeProvider.chineseDramas,
                 isLoading: isLoading,
-                onSeeAll: () {},
+                onSeeAll: () => _openList(
+                  'Trường thiên Drama "Tàu"',
+                  (page) => _movieService.getMoviesByCountry('trung-quoc', page: page),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: MovieSection(
+                title: 'Xưởng Phim Xứ Đông Lào',
+                movies: homeProvider.vietnamMovies,
+                isLoading: isLoading,
+                onSeeAll: () => _openList(
+                  'Xưởng Phim Xứ Đông Lào',
+                  (page) => _movieService.getMoviesByCountry('viet-nam', page: page),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: MovieSection(
+                title: 'Xi nê tuổi thơ',
+                movies: homeProvider.animationMovies,
+                isLoading: isLoading,
+                onSeeAll: () => _openList(
+                  'Xi nê tuổi thơ',
+                  (page) => _movieService.getMoviesByType('hoathinh', page: page),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: MovieSection(
+                title: 'Phim Lẻ Mới Nhất',
+                movies: homeProvider.singleMovies,
+                isLoading: isLoading,
+                onSeeAll: () => _openList(
+                  'Phim Lẻ Mới Nhất',
+                  (page) => _movieService.getMoviesByType('single', page: page),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: MovieSection(
+                title: 'Phim Bộ Mới Nhất',
+                movies: homeProvider.seriesMovies,
+                isLoading: isLoading,
+                onSeeAll: () => _openList(
+                  'Phim Bộ Mới Nhất',
+                  (page) => _movieService.getMoviesByType('series', page: page),
+                ),
               ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 80)),

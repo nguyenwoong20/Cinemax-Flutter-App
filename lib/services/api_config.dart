@@ -21,11 +21,12 @@ class ApiConfig {
       '$awsBaseUrl$authEndpoint/forgot-password';
   static String get resetPasswordUrl => '$awsBaseUrl$authEndpoint/reset-password';
 
-  static String updateUserUrl(String userId) => '$baseUrl$userEndpoint/$userId';
+  static String updateUserUrl(String userId) =>
+      '$awsBaseUrl$userEndpoint/$userId';
 
   static String getCommentsUrl(String movieId) =>
-      '$baseUrl$commentEndpoint/$movieId';
-  static String get addCommentUrl => '$baseUrl$commentEndpoint/add';
+      '$awsBaseUrl$commentEndpoint/$movieId';
+  static String get addCommentUrl => '$awsBaseUrl$commentEndpoint/add';
 
   static String getMoviesLimitUrl(int limit) =>
       '$awsBaseUrl$movieEndpoint/limit/$limit';
@@ -35,37 +36,45 @@ class ApiConfig {
       '$awsBaseUrl$movieEndpoint/country/$slug';
   static String getMoviesByYearUrl(int year) =>
       '$awsBaseUrl$movieEndpoint/year/$year';
+  static String getMoviesByTypeUrl(String type) =>
+      '$awsBaseUrl$movieEndpoint/type/$type';
+  static String get hotMoviesUrl => '$awsBaseUrl$movieEndpoint/hot';
+  static String get filterMoviesUrl => '$awsBaseUrl$movieEndpoint/filter';
   static String getMovieDetailUrl(String slug) =>
       '$awsBaseUrl$movieEndpoint/$slug';
+  static String getMovieCastUrl(String slug) =>
+      '$awsBaseUrl$movieEndpoint/$slug/cast';
   static String get searchMoviesUrl => '$awsBaseUrl$movieEndpoint';
 
   static const String bookmarkEndpoint = '/api/bookmarks';
-  static String get getBookmarksUrl => '$baseUrl$bookmarkEndpoint';
-  static String get addBookmarkUrl => '$baseUrl$bookmarkEndpoint';
+  static String get getBookmarksUrl => '$awsBaseUrl$bookmarkEndpoint';
+  static String get addBookmarkUrl => '$awsBaseUrl$bookmarkEndpoint';
   static String removeBookmarkUrl(String movieId) =>
-      '$baseUrl$bookmarkEndpoint/$movieId';
+      '$awsBaseUrl$bookmarkEndpoint/$movieId';
   static String checkBookmarkUrl(String movieId) =>
-      '$baseUrl$bookmarkEndpoint/check/$movieId';
+      '$awsBaseUrl$bookmarkEndpoint/check/$movieId';
 
   static const String savedMovieEndpoint = '/api/saved-movies';
-  static String get getSavedMoviesUrl => '$baseUrl$savedMovieEndpoint';
-  static String get saveMovieUrl => '$baseUrl$savedMovieEndpoint';
+  static String get getSavedMoviesUrl => '$awsBaseUrl$savedMovieEndpoint';
+  static String get saveMovieUrl => '$awsBaseUrl$savedMovieEndpoint';
   static String removeSavedMovieUrl(String movieId) =>
-      '$baseUrl$savedMovieEndpoint/$movieId';
+      '$awsBaseUrl$savedMovieEndpoint/$movieId';
 
   static const String watchRoomEndpoint = '/api/watch-rooms';
-  static String get getWatchRoomsUrl => '$baseUrl$watchRoomEndpoint';
-  static String get createWatchRoomUrl => '$baseUrl$watchRoomEndpoint';
+  static String get getWatchRoomsUrl => '$awsBaseUrl$watchRoomEndpoint';
+  static String get createWatchRoomUrl => '$awsBaseUrl$watchRoomEndpoint';
   static String getWatchRoomUrl(String code) =>
-      '$baseUrl$watchRoomEndpoint/$code';
+      '$awsBaseUrl$watchRoomEndpoint/$code';
   static String joinWatchRoomUrl(String code) =>
-      '$baseUrl$watchRoomEndpoint/$code/join';
+      '$awsBaseUrl$watchRoomEndpoint/$code/join';
   static String leaveWatchRoomUrl(String code) =>
-      '$baseUrl$watchRoomEndpoint/$code/leave';
+      '$awsBaseUrl$watchRoomEndpoint/$code/leave';
   static String closeWatchRoomUrl(String code) =>
-      '$baseUrl$watchRoomEndpoint/$code';
+      '$awsBaseUrl$watchRoomEndpoint/$code';
 
-  static String get socketUrl => baseUrl;
+  // AWS API Gateway WebSocket API (realtime watch room sync)
+  static const String socketUrl =
+      'wss://n5hhh58ty7.execute-api.ap-southeast-1.amazonaws.com/prod';
 
   static const Duration timeout = Duration(seconds: 30);
 

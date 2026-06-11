@@ -81,6 +81,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         .toList();
   }
 
+  Widget _buildBadge(String text, Color color, {bool filled = false}) {
+    if (text.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: filled ? color : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        border: filled ? null : Border.all(color: color.withOpacity(0.6)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: filled ? Colors.white : color,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentServer = widget.movieDetail.episodes[_currentServerIndex];
@@ -96,9 +116,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Stack(
+            Builder(builder: (context) {
+              final size = MediaQuery.of(context).size;
+              final videoHeight = (size.width * 9 / 16)
+                  .clamp(0.0, size.height * 0.55);
+              return SizedBox(
+                width: double.infinity,
+                height: videoHeight,
+                child: Stack(
                 children: [
                   CustomVideoPlayer(
                     key: ValueKey(
@@ -133,65 +158,128 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   ),
                 ],
               ),
-            ),
+              );
+            }),
 
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.movieDetail.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+              // Màn phát phim luôn nền đen nên ép theme tối cho mọi widget con
+              // (chip tập, bình luận...) — tránh chip sáng chói khi máy ở light mode.
+              child: Theme(
+                data: ThemeData.dark(useMaterial3: true).copyWith(
+                  colorScheme: const ColorScheme.dark(
+                    primary: Color(0xFF5BA3F5),
+                    surface: Color(0xFF14181F),
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.movieDetail.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 21,
+                                fontWeight: FontWeight.bold,
+                                height: 1.25,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${currentServer.serverName} - ${currentEpisode.name}',
-                            style: const TextStyle(
-                              color: Color(0xFF5BA3F5),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                            if (widget.movieDetail.originName.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                widget.movieDetail.originName,
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 13,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _buildBadge(
+                                  widget.movieDetail.quality,
+                                  const Color(0xFF5BA3F5),
+                                  filled: true,
+                                ),
+                                _buildBadge(widget.movieDetail.lang,
+                                    Colors.grey[400]!),
+                                if (widget.movieDetail.year > 0)
+                                  _buildBadge('${widget.movieDetail.year}',
+                                      Colors.grey[400]!),
+                                if (widget.movieDetail.episodeCurrent.isNotEmpty)
+                                  _buildBadge(widget.movieDetail.episodeCurrent,
+                                      Colors.grey[400]!),
+                              ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF5BA3F5).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.play_circle_fill,
+                                      size: 16, color: Color(0xFF5BA3F5)),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      'Đang phát: ${currentEpisode.name} · ${currentServer.serverName}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFF5BA3F5),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
 
-                    const Divider(color: Colors.grey, height: 1),
+                      Divider(color: Colors.white.withOpacity(0.08), height: 1),
 
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      child: EpisodeServerList(
-                        servers: _servers,
-                        currentServerIndex: _currentServerIndex,
-                        currentEpisodeIndex: _currentEpisodeIndex,
-                        onEpisodeTap: (serverIdx, episodeIdx) {
-                          setState(() {
-                            _currentServerIndex = serverIdx;
-                            _currentEpisodeIndex = episodeIdx;
-                          });
-                        },
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: EpisodeServerList(
+                          servers: _servers,
+                          currentServerIndex: _currentServerIndex,
+                          currentEpisodeIndex: _currentEpisodeIndex,
+                          onEpisodeTap: (serverIdx, episodeIdx) {
+                            setState(() {
+                              _currentServerIndex = serverIdx;
+                              _currentEpisodeIndex = episodeIdx;
+                            });
+                          },
+                        ),
                       ),
-                    ),
 
-                    const Divider(color: Colors.grey, height: 1),
+                      Divider(color: Colors.white.withOpacity(0.08), height: 1),
 
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16.0),
-                      child: CommentSection(movieId: widget.movieDetail.slug),
-                    ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: CommentSection(movieId: widget.movieDetail.slug),
+                      ),
 
-                    const SizedBox(height: 40),
-                  ],
+                      const SizedBox(height: 40),
+                    ],
+                  ),
                 ),
               ),
             ),

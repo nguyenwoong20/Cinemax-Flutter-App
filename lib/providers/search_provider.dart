@@ -47,6 +47,109 @@ class SearchProvider extends ChangeNotifier {
 
   Timer? _debounce;
 
+  // Bộ lọc đa tiêu chí kiểu kkphim (thể loại / quốc gia / năm / sắp xếp / sub)
+  static const Map<String, String> categoryOptions = {
+    'hanh-dong': 'Hành động',
+    'phieu-luu': 'Phiêu lưu',
+    'hai-huoc': 'Hài hước',
+    'hinh-su': 'Hình sự',
+    'chinh-kich': 'Chính kịch',
+    'gia-dinh': 'Gia đình',
+    'lich-su': 'Lịch sử',
+    'kinh-di': 'Kinh dị',
+    'am-nhac': 'Âm nhạc',
+    'bi-an': 'Bí ẩn',
+    'tinh-cam': 'Tình cảm',
+    'vien-tuong': 'Viễn tưởng',
+    'tam-ly': 'Tâm lý',
+    'co-trang': 'Cổ trang',
+    'vo-thuat': 'Võ thuật',
+    'chien-tranh': 'Chiến tranh',
+  };
+  static const Map<String, String> countryOptions = {
+    'au-my': 'Âu Mỹ',
+    'han-quoc': 'Hàn Quốc',
+    'nhat-ban': 'Nhật Bản',
+    'trung-quoc': 'Trung Quốc',
+    'hong-kong': 'Hồng Kông',
+    'dai-loan': 'Đài Loan',
+    'anh': 'Anh',
+    'phap': 'Pháp',
+    'thai-lan': 'Thái Lan',
+    'an-do': 'Ấn Độ',
+    'viet-nam': 'Việt Nam',
+  };
+  static const Map<String, String> typeOptions = {
+    'single': 'Phim lẻ',
+    'series': 'Phim bộ',
+    'hoathinh': 'Hoạt hình',
+  };
+  static const List<int> yearOptions = [2026, 2025, 2024, 2023, 2022, 2021, 2020];
+  static const Map<String, String> sortOptions = {
+    '': 'Mới cập nhật',
+    'rating': 'Điểm IMDb/TMDB',
+    'votes': 'Lượt đánh giá',
+    'year': 'Năm sản xuất',
+  };
+  static const Map<String, String> langOptions = {
+    'Vietsub': 'Vietsub',
+    'Thuyết Minh': 'Thuyết minh',
+    'Lồng Tiếng': 'Lồng tiếng',
+  };
+
+  String _filterCategory = '';
+  String _filterCountry = '';
+  String _filterType = '';
+  int _filterYear = 0;
+  int _filterYearFrom = 0;
+  int _filterYearTo = 0;
+  String _filterSort = '';
+  String _filterLang = '';
+
+  String get filterCategory => _filterCategory;
+  String get filterCountry => _filterCountry;
+  String get filterType => _filterType;
+  int get filterYear => _filterYear;
+  int get filterYearFrom => _filterYearFrom;
+  int get filterYearTo => _filterYearTo;
+  String get filterSort => _filterSort;
+  String get filterLang => _filterLang;
+  bool get hasActiveFilter =>
+      _filterCategory.isNotEmpty ||
+      _filterCountry.isNotEmpty ||
+      _filterType.isNotEmpty ||
+      _filterYear > 0 ||
+      _filterYearFrom > 0 ||
+      _filterYearTo > 0 ||
+      _filterSort.isNotEmpty ||
+      _filterLang.isNotEmpty;
+
+  Future<void> applyFilters({
+    String category = '',
+    String country = '',
+    String type = '',
+    int year = 0,
+    int yearFrom = 0,
+    int yearTo = 0,
+    String sort = '',
+    String lang = '',
+  }) async {
+    _filterCategory = category;
+    _filterCountry = country;
+    _filterType = type;
+    _filterYear = year;
+    _filterYearFrom = yearFrom;
+    _filterYearTo = yearTo;
+    _filterSort = sort;
+    _filterLang = lang;
+    _searchQuery = '';
+    _selectedCategory = 'Tất cả';
+    notifyListeners();
+    await loadMovies();
+  }
+
+  Future<void> clearFilters() => applyFilters();
+
   List<Movie> get movies => _movies;
   bool get isLoading => _isLoading;
   bool get isLoadingMore => _isLoadingMore;
@@ -106,6 +209,14 @@ class SearchProvider extends ChangeNotifier {
 
     _selectedCategory = category;
     _searchQuery = '';
+    _filterCategory = '';
+    _filterCountry = '';
+    _filterType = '';
+    _filterYear = 0;
+    _filterYearFrom = 0;
+    _filterYearTo = 0;
+    _filterSort = '';
+    _filterLang = '';
     notifyListeners();
 
     await loadMovies();
@@ -131,6 +242,22 @@ class SearchProvider extends ChangeNotifier {
   Future<List<Movie>> _fetchMovies({required int page}) async {
     if (_searchQuery.isNotEmpty) {
       return _movieService.searchMovies(_searchQuery, page: page, limit: _limit);
+    }
+
+    if (hasActiveFilter) {
+      // Backend xử lý mọi tiêu chí trong một lần gọi /api/movies/filter
+      return _movieService.getFilteredMovies(
+        category: _filterCategory,
+        country: _filterCountry,
+        type: _filterType,
+        year: _filterYear,
+        yearFrom: _filterYearFrom,
+        yearTo: _filterYearTo,
+        lang: _filterLang,
+        sort: _filterSort,
+        page: page,
+        limit: _limit,
+      );
     }
 
     if (_selectedCategory == 'Tất cả') {

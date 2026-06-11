@@ -18,6 +18,7 @@ class Movie {
   final String lang;
   final List<String> category;
   final List<String> country;
+  final double rating;
 
   Movie({
     required this.id,
@@ -38,6 +39,7 @@ class Movie {
     required this.lang,
     required this.category,
     required this.country,
+    this.rating = 0,
   });
 
   factory Movie.fromJson(Map<String, dynamic> json) {
@@ -76,6 +78,7 @@ class Movie {
       lang: json['lang'] ?? '',
       category: parseListNames(json['category']),
       country: parseListNames(json['country']),
+      rating: (json['rating'] is num) ? (json['rating'] as num).toDouble() : 0,
     );
   }
 }

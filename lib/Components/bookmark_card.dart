@@ -1,12 +1,14 @@
 // Component thẻ hiển thị phim đã lưu, bao gồm ảnh, rating và nút xóa.
 import 'package:flutter/material.dart';
 import 'cached_image_widget.dart';
+import 'rating_badge.dart';
 
 class BookmarkCard extends StatelessWidget {
   final String title;
   final String year;
   final String genre;
   final String imageUrl;
+  final double rating;
   final VoidCallback onDelete;
   final VoidCallback? onTap;
 
@@ -16,6 +18,7 @@ class BookmarkCard extends StatelessWidget {
     required this.year,
     required this.genre,
     required this.imageUrl,
+    this.rating = 0,
     required this.onDelete,
     this.onTap,
   });
@@ -46,30 +49,7 @@ class BookmarkCard extends StatelessWidget {
                     Positioned(
                       top: 8,
                       left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFC107),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.star, color: Colors.black, size: 12),
-                            SizedBox(width: 4),
-                            Text(
-                              '8.8',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      child: RatingBadge(rating: rating),
                     ),
                     Center(
                       child: Container(

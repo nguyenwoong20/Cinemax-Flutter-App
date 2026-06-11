@@ -67,6 +67,26 @@ class HistoryService {
     return null;
   }
 
+  /// Toàn bộ tiến độ đã lưu, mới xem nhất xếp trước.
+  Future<List<MovieProgress>> getAllProgress() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final items = <MovieProgress>[];
+      for (final key in prefs.getKeys()) {
+        if (!key.startsWith(_prefix)) continue;
+        final jsonStr = prefs.getString(key);
+        if (jsonStr != null) {
+          items.add(MovieProgress.fromJson(jsonDecode(jsonStr)));
+        }
+      }
+      items.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+      return items;
+    } catch (e) {
+      print('Error getting all progress: $e');
+      return [];
+    }
+  }
+
   Future<void> clearProgress(String movieSlug) async {
     try {
       final prefs = await SharedPreferences.getInstance();

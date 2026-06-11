@@ -65,6 +65,7 @@ class SearchResultsGrid extends StatelessWidget {
           imageUrl: movie.posterUrl,
           year: movie.year.toString(),
           genre: 'Phim',
+          rating: movie.rating,
           isBookmarked: isSaved,
           onBookmark: onBookmark != null ? () => onBookmark!(movie) : null,
           onTap: () => onMovieTap(movie),
