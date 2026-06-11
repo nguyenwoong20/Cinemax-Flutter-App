@@ -256,6 +256,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
               ? movie!.category.first
               : '',
           imageUrl: movie?.posterUrl ?? '',
+          rating: movie?.rating ?? 0,
           onDelete: () => _deleteSavedMovie(index),
           onTap: () {
             Navigator.push(
@@ -289,6 +290,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                   ? movie!.category.first
                   : '',
               imageUrl: movie?.posterUrl ?? '',
+          rating: movie?.rating ?? 0,
               onDelete: () => _deleteSavedMovie(index),
               onTap: () {
                 Navigator.push(

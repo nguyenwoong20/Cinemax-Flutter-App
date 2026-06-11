@@ -14,6 +14,7 @@ class MovieSection extends StatefulWidget {
   final bool isLoading;
   final VoidCallback? onSeeAll;
   final IconData? titleIcon;
+  final void Function(Movie)? onRemove;
 
   const MovieSection({
     super.key,
@@ -22,6 +23,7 @@ class MovieSection extends StatefulWidget {
     required this.isLoading,
     this.onSeeAll,
     this.titleIcon,
+    this.onRemove,
   });
 
   @override
@@ -175,6 +177,7 @@ class _MovieSectionState extends State<MovieSection> with RouteAware {
                                   : 'https://picsum.photos/200/300',
                               year: movie.year.toString(),
                               genre: movie.type,
+                              rating: movie.rating,
                               isBookmarked: isSaved,
                               onBookmark: isLoading
                                   ? null
@@ -207,6 +210,33 @@ class _MovieSectionState extends State<MovieSection> with RouteAware {
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (widget.onRemove != null)
+                              Positioned(
+                                top: 6,
+                                left: 6,
+                                child: GestureDetector(
+                                  onTap: () => widget.onRemove!(movie),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade700,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.4),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.delete_outline,
+                                      color: Colors.white,
+                                      size: 20,
                                     ),
                                   ),
                                 ),

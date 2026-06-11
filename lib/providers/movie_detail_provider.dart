@@ -75,6 +75,7 @@ class MovieDetailProvider extends ChangeNotifier {
       _movieDetail = movieDetail;
       _savedProgress = savedProgress;
       _cast = movieDetail.actors.map((name) => CastMember(name: name)).toList();
+      _loadRealCast();
       _servers = movieDetail.episodes
           .map(
             (server) => ServerData(
@@ -92,6 +93,23 @@ class MovieDetailProvider extends ChangeNotifier {
 
     _isLoading = false;
     _errorMessage = 'Không thể tải thông tin phim';
+    notifyListeners();
+  }
+
+  /// Lấy diễn viên kèm ảnh thật từ TMDB (qua backend); có thì thay placeholder.
+  Future<void> _loadRealCast() async {
+    final realCast = await _movieService.getMovieCast(slug);
+    if (realCast.isEmpty) return;
+
+    _cast = realCast
+        .map(
+          (c) => CastMember(
+            name: c['name'] ?? '',
+            role: (c['character'] ?? '') == '' ? null : c['character'],
+            imageUrl: (c['profileUrl'] ?? '') == '' ? null : c['profileUrl'],
+          ),
+        )
+        .toList();
     notifyListeners();
   }
 

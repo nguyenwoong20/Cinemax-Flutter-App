@@ -30,20 +30,15 @@ class CachedImageWidget extends StatelessWidget {
 
     String finalUrl = imageUrl;
 
+    // Ảnh giờ được host trên S3 (HTTPS) nên tải trực tiếp,
+    // không cần đi qua proxy của backend cũ nữa.
     if (finalUrl.startsWith('/')) {
       finalUrl = '${ApiConfig.baseUrl}$finalUrl';
-    } else if (finalUrl.startsWith('http')) {
-      if (!finalUrl.contains('localhost') && !finalUrl.contains('10.0.2.2')) {
-        final encodedUrl = Uri.encodeComponent(finalUrl);
-        finalUrl = '${ApiConfig.baseUrl}/api/proxy/image?url=$encodedUrl';
-      }
     }
 
     if (finalUrl.contains('localhost')) {
       finalUrl = finalUrl.replaceFirst('localhost', '10.0.2.2');
     }
-
-    print('Loading image: $finalUrl');
 
     Widget image = CachedNetworkImage(
       imageUrl: finalUrl,

@@ -66,7 +66,7 @@ class CommentService {
   Future<bool> deleteComment(String movieId, String commentId) async {
     try {
       final token = await _authService.getToken();
-      final url = '${ApiConfig.baseUrl}/api/comments/$movieId/$commentId';
+      final url = '${ApiConfig.awsBaseUrl}/api/comments/$movieId/$commentId';
 
       final response = await http.delete(
         Uri.parse(url),
@@ -87,7 +87,7 @@ class CommentService {
   ) async {
     try {
       final token = await _authService.getToken();
-      final url = '${ApiConfig.baseUrl}/api/comments/$movieId/$commentId';
+      final url = '${ApiConfig.awsBaseUrl}/api/comments/$movieId/$commentId';
 
       final response = await http.put(
         Uri.parse(url),

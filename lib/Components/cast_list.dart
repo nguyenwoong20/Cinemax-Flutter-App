@@ -117,6 +117,28 @@ class CastList extends StatelessWidget {
     );
   }
 
+  Widget _buildAssetAvatar(String assetPath, String name) {
+    return Image.asset(
+      assetPath,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          color: _getAvatarColor(name),
+          child: Center(
+            child: Text(
+              _getInitials(name),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildCastCard(
     BuildContext context,
     CastMember member,
@@ -143,26 +165,15 @@ class CastList extends StatelessWidget {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              assetPath,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                debugPrint('Error loading asset $assetPath: $error');
-                return Container(
-                  color: _getAvatarColor(member.name),
-                  child: Center(
-                    child: Text(
-                      _getInitials(member.name),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+            // Ưu tiên ảnh thật của diễn viên (TMDB); không có thì dùng ảnh minh họa.
+            child: member.imageUrl != null && member.imageUrl!.isNotEmpty
+                ? Image.network(
+                    member.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildAssetAvatar(assetPath, member.name),
+                  )
+                : _buildAssetAvatar(assetPath, member.name),
           ),
         ),
 

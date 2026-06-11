@@ -38,6 +38,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   File? _selectedImage;
   String? _base64Image;
 
+  // Tài khoản Google không có mật khẩu -> ẩn toàn bộ phần đổi mật khẩu
+  bool get _isGoogleAccount => widget.user.provider == 'google';
+
   @override
   void initState() {
     super.initState();
@@ -264,38 +267,64 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 },
               ),
               const SizedBox(height: 32),
-              Row(
-                children: [
-                  Expanded(child: Divider(color: Colors.grey[600])),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'Đổi mật khẩu',
-                      style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                    ),
+              if (_isGoogleAccount) ...[
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF1A2332)
+                        : Colors.blue.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  Expanded(child: Divider(color: Colors.grey[600])),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _buildPasswordField(
-                controller: _passwordController,
-                label: 'Mật khẩu mới',
-                obscure: _obscurePassword,
-                onToggle: () =>
-                    setState(() => _obscurePassword = !_obscurePassword),
-                isDark: isDark,
-              ),
-              const SizedBox(height: 20),
-              _buildPasswordField(
-                controller: _confirmPasswordController,
-                label: 'Xác nhận mật khẩu',
-                obscure: _obscureConfirmPassword,
-                onToggle: () => setState(
-                  () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                  child: Row(
+                    children: [
+                      Icon(Icons.verified_user_outlined,
+                          size: 20, color: Colors.blue[400]),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Tài khoản đăng nhập bằng Google — bảo mật do Google quản lý, không cần mật khẩu.',
+                          style: TextStyle(
+                              fontSize: 12.5, color: Colors.grey[500]),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                isDark: isDark,
-              ),
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: Colors.grey[600])),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'Đổi mật khẩu',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: Colors.grey[600])),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _buildPasswordField(
+                  controller: _passwordController,
+                  label: 'Mật khẩu mới',
+                  obscure: _obscurePassword,
+                  onToggle: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 20),
+                _buildPasswordField(
+                  controller: _confirmPasswordController,
+                  label: 'Xác nhận mật khẩu',
+                  obscure: _obscureConfirmPassword,
+                  onToggle: () => setState(
+                    () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                  ),
+                  isDark: isDark,
+                ),
+              ],
               const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,

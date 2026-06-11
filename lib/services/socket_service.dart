@@ -1,6 +1,9 @@
-// Service Singleton quản lý kết nối Socket.IO cho tính năng WatchAlong.
+// Service Singleton quản lý kết nối realtime cho tính năng WatchAlong.
+// Backend mới: AWS API Gateway WebSocket API (thay cho Socket.IO server cũ).
+// Giao thức: gửi JSON {action, ...data}, nhận JSON {event, ...payload}.
 import 'dart:async';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'dart:convert';
+import 'dart:io';
 import '../models/watch_room_model.dart';
 import 'api_config.dart';
 
@@ -9,7 +12,8 @@ class SocketService {
   factory SocketService() => _instance;
   SocketService._internal();
 
-  io.Socket? _socket;
+  WebSocket? _socket;
+  bool _connected = false;
   String? _currentRoomCode;
   String? _userId;
 
@@ -38,90 +42,100 @@ class SocketService {
   Stream<String> get onRoomClosed => _onRoomClosedController.stream;
   Stream<bool> get onConnected => _onConnectedController.stream;
 
-  bool get isConnected => _socket?.connected ?? false;
+  bool get isConnected => _connected;
   String? get currentRoomCode => _currentRoomCode;
 
-  void connect({String? token}) {
-    if (_socket != null && _socket!.connected) {
+  Future<void> connect({String? token}) async {
+    if (_connected) return;
+
+    try {
+      _socket = await WebSocket.connect(ApiConfig.socketUrl);
+      _connected = true;
+      _onConnectedController.add(true);
+
+      _socket!.listen(
+        (raw) => _handleMessage(raw),
+        onDone: () {
+          _connected = false;
+          _onConnectedController.add(false);
+        },
+        onError: (error) {
+          print('Socket error: $error');
+          _connected = false;
+          _onConnectedController.add(false);
+        },
+      );
+    } catch (e) {
+      print('Socket connect error: $e');
+      _connected = false;
+      _onConnectedController.add(false);
+    }
+  }
+
+  void _handleMessage(dynamic raw) {
+    Map<String, dynamic> data;
+    try {
+      data = Map<String, dynamic>.from(jsonDecode(raw as String));
+    } catch (_) {
       return;
     }
 
-    _socket = io.io(
-      ApiConfig.socketUrl,
-      io.OptionBuilder()
-          .setTransports(['websocket'])
-          .disableAutoConnect()
-          .setExtraHeaders(
-            token != null ? {'Authorization': 'Bearer $token'} : {},
-          )
-          .build(),
-    );
+    switch (data['event']) {
+      case 'video-play':
+        _onVideoPlayController.add(VideoSyncState.fromJson(data));
+        break;
+      case 'video-pause':
+        _onVideoPauseController.add(VideoSyncState.fromJson(data));
+        break;
+      case 'video-seek':
+        _onVideoSeekController.add(VideoSyncState.fromJson(data));
+        break;
+      case 'sync-state':
+        _onSyncStateController.add(VideoSyncState.fromJson(data));
+        break;
+      case 'episode-change':
+        _onEpisodeChangeController.add(data);
+        break;
+      case 'user-joined':
+        _onUserJoinedController.add(data);
+        break;
+      case 'user-left':
+        _onUserLeftController.add(data);
+        break;
+      case 'room-closed':
+        _onRoomClosedController.add(data['message'] ?? 'Phòng xem chung đã đóng');
+        _currentRoomCode = null;
+        break;
+      case 'error':
+        print('Socket server error: ${data['message']}');
+        break;
+    }
+  }
 
-    _socket!.onConnect((_) {
-      _onConnectedController.add(true);
-    });
-
-    _socket!.onDisconnect((_) {
-      _onConnectedController.add(false);
-    });
-
-    _socket!.onError((error) {
-      print('Socket error: $error');
-    });
-
-    _socket!.on('video-play', (data) {
-      _onVideoPlayController.add(VideoSyncState.fromJson(data));
-    });
-
-    _socket!.on('video-pause', (data) {
-      _onVideoPauseController.add(VideoSyncState.fromJson(data));
-    });
-
-    _socket!.on('video-seek', (data) {
-      _onVideoSeekController.add(VideoSyncState.fromJson(data));
-    });
-
-    _socket!.on('sync-state', (data) {
-      _onSyncStateController.add(VideoSyncState.fromJson(data));
-    });
-
-    _socket!.on('episode-change', (data) {
-      _onEpisodeChangeController.add(Map<String, dynamic>.from(data));
-    });
-
-    _socket!.on('user-joined', (data) {
-      _onUserJoinedController.add(Map<String, dynamic>.from(data));
-    });
-
-    _socket!.on('user-left', (data) {
-      _onUserLeftController.add(Map<String, dynamic>.from(data));
-    });
-
-    _socket!.on('room-closed', (data) {
-      _onRoomClosedController.add(data['message'] ?? 'Room closed');
-      _currentRoomCode = null;
-    });
-
-    _socket!.connect();
+  void _send(Map<String, dynamic> message) {
+    if (!_connected || _socket == null) return;
+    _socket!.add(jsonEncode(message));
   }
 
   void disconnect() {
     if (_currentRoomCode != null) {
       leaveRoom(_currentRoomCode!);
     }
-    _socket?.disconnect();
+    _socket?.close();
     _socket = null;
+    _connected = false;
   }
 
-  void joinRoom(String roomCode, String userId, String userName) {
-    if (_socket == null || !_socket!.connected) {
-      connect();
+  Future<void> joinRoom(String roomCode, String userId, String userName) async {
+    if (!_connected) {
+      await connect();
     }
 
     _currentRoomCode = roomCode;
     _userId = userId;
 
-    _socket?.emit('join-room', {
+    _send({
+      'action': 'join-room',
       'roomCode': roomCode,
       'userId': userId,
       'userName': userName,
@@ -129,13 +143,14 @@ class SocketService {
   }
 
   void leaveRoom(String roomCode) {
-    _socket?.emit('leave-room', {'roomCode': roomCode});
+    _send({'action': 'leave-room', 'roomCode': roomCode});
     _currentRoomCode = null;
   }
 
   void emitPlay(double currentTime) {
     if (_currentRoomCode == null) return;
-    _socket?.emit('video-play', {
+    _send({
+      'action': 'video-play',
       'roomCode': _currentRoomCode,
       'currentTime': currentTime,
       'userId': _userId,
@@ -144,7 +159,8 @@ class SocketService {
 
   void emitPause(double currentTime) {
     if (_currentRoomCode == null) return;
-    _socket?.emit('video-pause', {
+    _send({
+      'action': 'video-pause',
       'roomCode': _currentRoomCode,
       'currentTime': currentTime,
       'userId': _userId,
@@ -153,7 +169,8 @@ class SocketService {
 
   void emitSeek(double currentTime) {
     if (_currentRoomCode == null) return;
-    _socket?.emit('video-seek', {
+    _send({
+      'action': 'video-seek',
       'roomCode': _currentRoomCode,
       'currentTime': currentTime,
       'userId': _userId,
@@ -162,7 +179,8 @@ class SocketService {
 
   void emitEpisodeChange(int serverIndex, int episodeIndex) {
     if (_currentRoomCode == null) return;
-    _socket?.emit('episode-change', {
+    _send({
+      'action': 'episode-change',
       'roomCode': _currentRoomCode,
       'serverIndex': serverIndex,
       'episodeIndex': episodeIndex,
@@ -172,11 +190,11 @@ class SocketService {
 
   void requestSync() {
     if (_currentRoomCode == null) return;
-    _socket?.emit('sync-request', {'roomCode': _currentRoomCode});
+    _send({'action': 'sync-request', 'roomCode': _currentRoomCode});
   }
 
   void closeRoom(String roomCode) {
-    _socket?.emit('close-room', {'roomCode': roomCode});
+    _send({'action': 'close-room', 'roomCode': roomCode});
     _currentRoomCode = null;
   }
 
