@@ -1,91 +1,70 @@
-# Cinemax Flutter App
+# 🎬 Cinemax — Movie Streaming App
 
-Ứng dụng xem phim Flutter với các màn hình auth, duyệt phim, chi tiết phim, bookmark và watch room.
+Ứng dụng xem phim xây dựng bằng **Flutter**, chạy trên backend **100% serverless trên AWS** — không server nào phải bảo trì, chi phí vận hành ≈ $0/tháng với AWS Free Tier.
 
-## Current Architecture Snapshot
+> 📱 **Tải app:** [Cinemax.apk](https://github.com/nguyenwoong20/Cinemax-Serverless-AWS/raw/main/apk/Cinemax.apk) (~55 MB, Android)
 
-- UI chính đang được tổ chức theo màn hình trong `lib/Views`.
-- API/services hiện nằm trong `lib/services`.
-- Theme và auth state đã được quản lý bằng Provider.
+## Kiến trúc hệ thống
 
-## Provider Scope Policy
+![Architecture](https://raw.githubusercontent.com/nguyenwoong20/Cinemax-Serverless-AWS/main/docs/architecture-aws.svg)
 
-### Global Provider
+**Backend:** 6 Lambda function · 2 API Gateway (REST + WebSocket) · 7 bảng DynamoDB · S3 · EventBridge · CloudWatch — toàn bộ định nghĩa bằng AWS SAM tại repo [Cinemax-Serverless-AWS](https://github.com/nguyenwoong20/Cinemax-Serverless-AWS).
 
-Use global provider when the state must survive route changes and be shared app-wide.
+## ✨ Tính năng
 
-- `ThemeProvider`
-- `AuthProvider`
-- `SavedMovieNotifier` or a future global bookmarks provider
-- `LocaleProvider` if localization state is added later
+### 🎥 Xem phim
+- **Kho 260+ phim** lưu trong DynamoDB, poster host trên S3
+- **Tự cập nhật phim mới mỗi đêm** (EventBridge cron 2h sáng kéo từ kkphim)
+- **Kho tự lớn:** tìm phim chưa có → hệ thống tự tìm trên kkphim và nhập vào kho khi mở xem
+- Trình phát video tự xây: **4 chế độ tỉ lệ màn hình** (Vừa / Giãn / Phóng to / Gốc), **chạm đúp trái/phải để tua** (tùy chỉnh 5s/10s), fullscreen xoay ngang, lưu cài đặt
+- Lưu tiến độ xem — mục **"Tiếp tục xem"** trên trang chủ
 
-### Local Provider
+### 🏠 Trang chủ
+- Slide **phim hot xếp hạng theo điểm TMDB**, tự xoay vòng bộ phim mới mỗi ngày
+- 7 mục phim: Phim mới cập nhật · Drama xứ Kim Chi · Drama "Tàu" · Phim Việt · Hoạt hình · Phim Lẻ · Phim Bộ — đều có "Xem tất cả" với cuộn vô hạn
+- **Tag điểm IMDb** trên mọi card phim
 
-Use local provider when the state belongs to a single screen or a short-lived flow.
+### 🔍 Tìm kiếm & Lọc
+- Tìm theo tên (có fallback sang kkphim khi kho không có)
+- **Bộ lọc đa tiêu chí** kiểu kkphim: thể loại, quốc gia, loại phim, năm, khoảng năm, sub, sắp xếp theo điểm/lượt vote/năm
 
-- `HomeProvider`
-- `SearchProvider`
-- `MovieDetailProvider`
-- `WatchRoomsProvider`
-- `WatchRoomProvider`
+### 👥 Xem chung (Watch Party)
+- Tạo phòng bằng mã 6 ký tự, mời bạn bè vào xem cùng
+- **Đồng bộ realtime** play/pause/tua/đổi tập qua **API Gateway WebSocket** — trễ < 1 giây
 
-### Feature-Scope Provider
+### 🔐 Tài khoản
+- Đăng ký email + **OTP gửi qua email thật**, đăng nhập **Google Sign-In** (Firebase, verify token phía server)
+- Đổi tên, **avatar upload lên S3**; tài khoản Google tự ẩn phần mật khẩu
+- Phim đã lưu (bookmark) đồng bộ trên cloud
 
-Use feature-scope provider when the state is shared by a group of screens inside one feature, but not by the whole app.
+### 💬 Bình luận
+- Bình luận theo phim, **tự che từ nhạy cảm** (profanity filter phía server)
 
-- Bookmark state can live here if it is not fully global
-- Any multi-screen auth wizard or onboarding flow
+### 🎭 Diễn viên
+- Ảnh diễn viên thật + tên vai diễn lấy từ **TMDB API**
 
-### Rule Of Thumb
+## 🛠 Tech stack
 
-- If the state must be read by several unrelated routes, keep it global.
-- If the state is only for rendering or interaction in one screen, keep it local.
-- If the state is shared inside one feature area, prefer feature scope.
+| Phần | Công nghệ |
+|---|---|
+| App | Flutter (Dart) · Provider · video_player · WebSocket (dart:io) |
+| Auth | Firebase Google Sign-In + JWT tự quản (bcrypt, OTP email) |
+| Backend | AWS Lambda (Node.js 22) · API Gateway REST + WebSocket · DynamoDB · S3 · EventBridge · CloudWatch · AWS SAM |
+| Dữ liệu phim | kkphim API (phimapi.com) · TMDB API |
 
-## Provider Setup
+## 🚀 Chạy dự án
 
-- App dùng `MultiProvider` tại `lib/main.dart`.
-- Các provider hiện tại:
-	- `ThemeProvider`: quản lý light/dark mode.
-	- `AuthProvider`: quản lý trạng thái đăng nhập, lỗi và loading cho login/login Google.
-	- `HomeProvider`: quản lý dữ liệu trang chủ (user, danh sách phim, trạng thái loading, lưu/xóa phim nổi bật).
-	- `MovieDetailProvider`: quản lý dữ liệu chi tiết phim, trạng thái loading/error, tiến trình xem và lưu/xóa phim.
-	- `SearchProvider`: quản lý tìm kiếm, lọc danh mục, phân trang và trạng thái lưu phim.
-	- `WatchRoomsProvider`: quản lý thông tin user, trạng thái join/create room và kết nối socket ban đầu.
-	- `WatchRoomProvider`: quản lý trạng thái phiên xem chung (room state, sync event, episode, leave/close room).
+```bash
+git clone https://github.com/nguyenwoong20/Cinemax-Flutter-App.git
+cd Cinemax-Flutter-App
+flutter pub get
+# Cần file android/app/google-services.json từ Firebase Console của bạn
+flutter run
+```
 
-## Auth Flow (Provider-first)
+Endpoint backend cấu hình tại `lib/services/api_config.dart`.
 
-- `LoginScreen` không gọi trực tiếp `AuthService` nữa.
-- `LoginScreen` gọi `AuthProvider.login()` và `AuthProvider.loginWithGoogle()`.
-- Trạng thái loading/error được bind từ provider để UI phản hồi đồng bộ.
+## 📦 Repo liên quan
 
-## Home Flow (Provider-first)
-
-- `HomeScreen` dùng provider cục bộ cho state trang chủ.
-- Logic tải dữ liệu trang chủ đã chuyển sang `HomeProvider.loadData()`.
-- Logic lưu/xóa phim ở carousel nổi bật đã chuyển sang `HomeProvider.toggleFeaturedMovieSave()`.
-
-## Movie Detail Flow (Provider-first)
-
-- `MovieDetailScreen` đã chuyển phần lớn state và business logic sang `MovieDetailProvider`.
-- Tải chi tiết phim, cast, server/episode, trạng thái lưu phim và tiến trình xem đều được quản lý trong provider.
-- UI còn tập trung vào render và điều hướng sang màn phát video.
-
-## Search Flow (Provider-first)
-
-- `SearchScreen` đã chuyển logic search/debounce/filter/pagination vào `SearchProvider`.
-- Trạng thái loading/loading more và danh sách kết quả được quản lý tập trung trong provider.
-- Bookmark action trong grid được điều phối qua provider để giảm logic trong UI.
-
-## Watch Room Flow (Provider-first)
-
-- `WatchRoomsScreen` đã chuyển logic join/create room và user check sang `WatchRoomsProvider`.
-- `WatchRoomScreen` đã chuyển logic đồng bộ socket, trạng thái episode/player và refresh participants sang `WatchRoomProvider`.
-- UI chỉ giữ phần hiển thị, điều hướng và xác nhận hành động.
-
-## Next Refactor Steps
-
-- Tách dần theo feature (auth/movie/watch-room).
-- Đưa business logic sang domain/use case trước khi thay đổi sâu UI.
-- Giữ chiến lược refactor từng phần để tránh ảnh hưởng toàn bộ app.
+- ☁️ [Cinemax-Serverless-AWS](https://github.com/nguyenwoong20/Cinemax-Serverless-AWS) — toàn bộ backend (SAM template, 6 Lambda, scripts)
+- 📖 [Báo cáo & Workshop](https://nguyenwoong20.github.io/AWS_FCAJ_Workshop/) — tài liệu triển khai song ngữ từng bước
