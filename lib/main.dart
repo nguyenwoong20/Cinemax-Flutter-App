@@ -15,6 +15,7 @@ import 'Views/profile_screen.dart';
 import 'Views/register_screen.dart';
 import 'Views/search_screen.dart';
 import 'providers/auth_provider.dart';
+import 'services/auth_service.dart';
 import 'theme_provider.dart';
 import 'utils.dart';
 
@@ -133,7 +134,7 @@ class _MyAppState extends State<MyApp> {
           ],
           initialRoute: '/',
           routes: {
-            '/': (context) => const LoginScreen(),
+            '/': (context) => const AuthGate(),
             '/register': (context) => const RegisterScreen(),
             '/home': (context) => const HomeScreen(),
             '/profile': (context) => const ProfileScreen(),
@@ -142,6 +143,28 @@ class _MyAppState extends State<MyApp> {
             '/forgotPassword': (context) => const ForgotPasswordScreen(),
           },
         );
+      },
+    );
+  }
+}
+
+
+/// Cổng vào app: đã có phiên đăng nhập (token lưu trong máy) thì vào thẳng
+/// Trang chủ, chưa có mới hiện màn Đăng nhập.
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: AuthService().isLoggedIn(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        return snapshot.data! ? const HomeScreen() : const LoginScreen();
       },
     );
   }

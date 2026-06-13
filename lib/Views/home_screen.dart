@@ -123,7 +123,25 @@ class _HomeScreenState extends State<HomeScreen> {
             HomeAppBar(user: homeProvider.user),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: 8, left: 16, bottom: 8),
+                child: Row(
+                  children: [
+                    Text(
+                      '🔥 Hot Trending',
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.zero,
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : MovieSlide(
