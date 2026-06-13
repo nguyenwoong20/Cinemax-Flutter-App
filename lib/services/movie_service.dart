@@ -196,6 +196,34 @@ class MovieService {
     }
   }
 
+  Future<Map<String, List<Movie>>?> getHomeData() async {
+    try {
+      final response = await http
+          .get(Uri.parse(ApiConfig.homeDataUrl))
+          .timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] is Map) {
+          final Map<String, dynamic> sections = data['data'];
+          final result = <String, List<Movie>>{};
+          for (final entry in sections.entries) {
+            if (entry.value is List) {
+              result[entry.key] = (entry.value as List)
+                  .map((json) => Movie.fromJson(json))
+                  .toList();
+            }
+          }
+          return result;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching home data: $e');
+      return null;
+    }
+  }
+
   Future<Movie?> getMovieDetail(String slug) async {
     try {
       final response = await http

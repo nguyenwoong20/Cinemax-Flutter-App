@@ -51,51 +51,50 @@ class HomeProvider extends ChangeNotifier {
 
     final user = await _authService.getUser();
 
-    // Tải song song toàn bộ các mục cho nhanh
-    final results = await Future.wait([
-      _movieService.getHotMovies(limit: 12), // slide: phim hot theo điểm TMDB
-      _movieService.getMoviesLimit(12), // phim mới cập nhật
-      _movieService.getMoviesByCategory('hanh-dong', limit: 10),
-      _movieService.getMoviesByCountry('han-quoc', limit: 12),
-      _movieService.getMoviesByCountry('trung-quoc', limit: 12),
-      _movieService.getMoviesByCountry('viet-nam', limit: 12),
-      _movieService.getMoviesByType('hoathinh', limit: 12),
-      _movieService.getMoviesByType('single', limit: 12),
-      _movieService.getMoviesByType('series', limit: 12),
-      _movieService.getMoviesByCountry('au-my', limit: 10), // phim Âu Mỹ cho slide
-    ]);
+    // 1 request duy nhất lấy toàn bộ dữ liệu trang chủ (thay vì 10 request song song
+    // gây nghẽn Lambda cold-start → section lúc có lúc không)
+    final home = await _movieService.getHomeData();
 
     await savedMovieNotifier.loadSavedMovies();
 
     _user = user;
-    // Ưu tiên bảng xếp hạng hot; trống thì trộn Á-Âu; vẫn trống thì phim mới
-    _featuredMovies = results[0].isNotEmpty
-        ? results[0]
-        : _mixFeatured(results[1], results[9]);
-    if (_featuredMovies.isEmpty) _featuredMovies = results[1];
-    _newMovies = results[1];
-    _recommendedMovies = results[2];
-    _koreanDramas = results[3];
-    _chineseDramas = results[4];
-    _vietnamMovies = results[5];
-    _animationMovies = results[6];
-    _singleMovies = results[7];
-    _seriesMovies = results[8];
+
+    if (home != null) {
+      final hot = home['hot'] ?? [];
+      final latest = home['latest'] ?? [];
+      _featuredMovies = hot.isNotEmpty ? hot : latest;
+      _newMovies = latest;
+      _koreanDramas = home['korean'] ?? [];
+      _chineseDramas = home['chinese'] ?? [];
+      _vietnamMovies = home['vietnam'] ?? [];
+      _animationMovies = home['animation'] ?? [];
+      _singleMovies = home['single'] ?? [];
+      _seriesMovies = home['series'] ?? [];
+    } else {
+      // Fallback: gọi riêng lẻ nếu endpoint /home lỗi
+      final results = await Future.wait([
+        _movieService.getHotMovies(limit: 12),
+        _movieService.getMoviesLimit(12),
+        _movieService.getMoviesByCountry('han-quoc', limit: 12),
+        _movieService.getMoviesByCountry('trung-quoc', limit: 12),
+        _movieService.getMoviesByCountry('viet-nam', limit: 12),
+        _movieService.getMoviesByType('hoathinh', limit: 12),
+        _movieService.getMoviesByType('single', limit: 12),
+        _movieService.getMoviesByType('series', limit: 12),
+      ]);
+      _featuredMovies = results[0].isNotEmpty ? results[0] : results[1];
+      _newMovies = results[1];
+      _koreanDramas = results[2];
+      _chineseDramas = results[3];
+      _vietnamMovies = results[4];
+      _animationMovies = results[5];
+      _singleMovies = results[6];
+      _seriesMovies = results[7];
+    }
+
     _continueWatching = await _loadContinueWatching();
     _isLoading = false;
     notifyListeners();
-  }
-
-  /// Trộn xen kẽ phim châu Á (2026) và Âu Mỹ cho slide, bỏ trùng, lấy 12.
-  List<Movie> _mixFeatured(List<Movie> asian, List<Movie> western) {
-    final mixed = <Movie>[];
-    final seen = <String>{};
-    final maxLen = asian.length > western.length ? asian.length : western.length;
-    for (var i = 0; i < maxLen; i++) {
-      if (i < asian.length && seen.add(asian[i].slug)) mixed.add(asian[i]);
-      if (i < western.length && seen.add(western[i].slug)) mixed.add(western[i]);
-    }
-    return mixed.take(12).toList();
   }
 
   /// Phim xem dở gần đây: lấy slug từ lịch sử local rồi tra thông tin phim.

@@ -41,6 +41,7 @@ class ApiConfig {
   static String getMoviesByTypeUrl(String type) =>
       '$awsBaseUrl$movieEndpoint/type/$type';
   static String get hotMoviesUrl => '$awsBaseUrl$movieEndpoint/hot';
+  static String get homeDataUrl => '$awsBaseUrl$movieEndpoint/home';
   static String get filterMoviesUrl => '$awsBaseUrl$movieEndpoint/filter';
   static String getMovieDetailUrl(String slug) =>
       '$awsBaseUrl$movieEndpoint/$slug';
