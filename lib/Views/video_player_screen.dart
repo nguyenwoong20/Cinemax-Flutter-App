@@ -101,15 +101,50 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 
+  Widget _buildNoSourcePlaceholder() {
+    return Container(
+      color: Colors.black,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.hourglass_bottom,
+              color: Color(0xFF5BA3F5), size: 44),
+          const SizedBox(height: 14),
+          const Text(
+            'Ôi hỏng rồi 😥\nKhông thể tải video hoặc chưa có bản đẹp.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tập phim này bị hỏng hoặc chưa có bản đẹp.\nXin bạn hãy đợi nhé!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentServer = widget.movieDetail.episodes[_currentServerIndex];
     final currentEpisode = currentServer.episodes[_currentEpisodeIndex];
 
-    String videoUrl = currentEpisode.linkM3u8;
-    if (videoUrl.isEmpty) {
-      videoUrl = currentEpisode.linkEmbed;
-    }
+    // link_m3u8 là stream trực tiếp (HLS) phát được; link_embed chỉ là trang
+    // iframe nên video_player không mở được → coi như tập chưa có bản đẹp.
+    final bool hasDirectSource = currentEpisode.linkM3u8.isNotEmpty;
+    final String videoUrl = currentEpisode.linkM3u8;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -125,19 +160,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 height: videoHeight,
                 child: Stack(
                 children: [
-                  CustomVideoPlayer(
-                    key: ValueKey(
-                      '${_currentServerIndex}_$_currentEpisodeIndex',
-                    ),
-                    videoUrl: videoUrl,
-                    autoPlay: true,
-                    startAt:
-                        (_currentServerIndex == widget.initialServerIndex &&
-                            _currentEpisodeIndex == widget.initialEpisodeIndex)
-                        ? widget.startAt
-                        : null,
-                    onProgress: _onProgress,
-                  ),
+                  hasDirectSource
+                      ? CustomVideoPlayer(
+                          key: ValueKey(
+                            '${_currentServerIndex}_$_currentEpisodeIndex',
+                          ),
+                          videoUrl: videoUrl,
+                          autoPlay: true,
+                          startAt:
+                              (_currentServerIndex ==
+                                          widget.initialServerIndex &&
+                                      _currentEpisodeIndex ==
+                                          widget.initialEpisodeIndex)
+                                  ? widget.startAt
+                                  : null,
+                          onProgress: _onProgress,
+                        )
+                      : _buildNoSourcePlaceholder(),
                   Positioned(
                     top: 10,
                     left: 10,

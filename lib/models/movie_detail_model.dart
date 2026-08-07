@@ -111,7 +111,7 @@ class MovieDetail {
       thumbUrl: json['thumb_url'] ?? '',
       time: json['time'] ?? '',
       episodeCurrent: json['episode_current'] ?? '',
-      episodeTotal: json['episode_total'] ?? '',
+      episodeTotal: json['episode_total']?.toString() ?? '',
       quality: json['quality'] ?? '',
       lang: json['lang'] ?? '',
       trailerUrl: json['trailer_url'] ?? '',
