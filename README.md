@@ -2,7 +2,7 @@
 
 Ứng dụng xem phim xây dựng bằng **Flutter**, chạy trên backend **100% serverless trên AWS** — không server nào phải bảo trì, chi phí vận hành ≈ $0/tháng với AWS Free Tier.
 
-> 📱 **Tải app:** [Cinemax.apk](https://github.com/nguyenwoong20/Cinemax-Serverless-AWS/raw/main/apk/Cinemax.apk) (~55 MB, Android)
+> 📱 **Tải app:** [Cinemax.apk](https://github.com/nguyenwoong20/Cinemax-Flutter-App/raw/main/apk/Cinemax.apk) (~58 MB, Android, bản build 08/08/2026)
 
 ## Kiến trúc hệ thống
 
