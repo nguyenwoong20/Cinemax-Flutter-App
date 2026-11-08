@@ -68,3 +68,40 @@ Endpoint backend cấu hình tại `lib/services/api_config.dart`.
 
 - ☁️ [Cinemax-Serverless-AWS](https://github.com/nguyenwoong20/Cinemax-Serverless-AWS) — toàn bộ backend (SAM template, 6 Lambda, scripts)
 - 📖 [Báo cáo & Workshop](https://nguyenwoong20.github.io/AWS_FCAJ_Workshop/) — tài liệu triển khai song ngữ từng bước
+## 📱 Ảnh giao diện Cinemax
+
+### Trang chủ
+
+![Cinemax Trang chủ](docs/screenshots/01-cinemax.png)
+
+### Danh mục phim
+
+![Cinemax Danh mục phim](docs/screenshots/02-cinemax.png)
+
+### Tìm kiếm
+
+![Cinemax Tìm kiếm](docs/screenshots/03-cinemax.png)
+
+### Phim đã lưu
+
+![Cinemax Phim đã lưu](docs/screenshots/04-cinemax.png)
+
+### Xem chung
+
+![Cinemax Xem chung](docs/screenshots/05-cinemax.png)
+
+### Hồ sơ
+
+![Cinemax Hồ sơ](docs/screenshots/06-cinemax.png)
+
+### Chi tiết phim
+
+![Cinemax Chi tiết phim](docs/screenshots/07-cinemax.png)
+
+### Nội dung và diễn viên
+
+![Cinemax Nội dung và diễn viên](docs/screenshots/08-cinemax.png)
+
+### Nội dung và diễn viên (bản bổ sung)
+
+![Cinemax Nội dung và diễn viên (bản bổ sung)](docs/screenshots/09-cinemax.png)
