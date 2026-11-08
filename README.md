@@ -70,14 +70,14 @@ Endpoint backend cấu hình tại `lib/services/api_config.dart`.
 - 📖 [Báo cáo & Workshop](https://nguyenwoong20.github.io/AWS_FCAJ_Workshop/) — tài liệu triển khai song ngữ từng bước
 ## 📱 Ảnh giao diện Cinemax
 
-<div style="display:flex;flex-wrap:nowrap;gap:12px;overflow-x:auto;padding:8px 0;">
-  <img src="docs/screenshots/01-cinemax.png" alt="Trang chủ" width="180">
-  <img src="docs/screenshots/02-cinemax.png" alt="Danh mục phim" width="180">
-  <img src="docs/screenshots/03-cinemax.png" alt="Tìm kiếm" width="180">
-  <img src="docs/screenshots/04-cinemax.png" alt="Phim đã lưu" width="180">
-  <img src="docs/screenshots/05-cinemax.png" alt="Xem chung" width="180">
-  <img src="docs/screenshots/06-cinemax.png" alt="Hồ sơ" width="180">
-  <img src="docs/screenshots/07-cinemax.png" alt="Chi tiết phim" width="180">
-  <img src="docs/screenshots/08-cinemax.png" alt="Nội dung và diễn viên" width="180">
-  <img src="docs/screenshots/09-cinemax.png" alt="Nội dung và diễn viên (bản bổ sung)" width="180">
-</div>
+### Trang chủ và khám phá
+
+<img src="docs/screenshots/01-cinemax.png" alt="Trang chủ" width="150"> <img src="docs/screenshots/02-cinemax.png" alt="Danh mục phim" width="150"> <img src="docs/screenshots/03-cinemax.png" alt="Tìm kiếm" width="150"> <img src="docs/screenshots/04-cinemax.png" alt="Phim đã lưu" width="150">
+
+### Tài khoản và xem chung
+
+<img src="docs/screenshots/05-cinemax.png" alt="Xem chung" width="150"> <img src="docs/screenshots/06-cinemax.png" alt="Hồ sơ" width="150"> <img src="docs/screenshots/07-cinemax.png" alt="Chi tiết phim" width="150"> <img src="docs/screenshots/08-cinemax.png" alt="Nội dung và diễn viên" width="150">
+
+### Nội dung phim
+
+<img src="docs/screenshots/09-cinemax.png" alt="Nội dung phim" width="150">
