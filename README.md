@@ -76,7 +76,7 @@ Endpoint backend cấu hình tại `lib/services/api_config.dart`.
 
 ### Tài khoản và xem chung
 
-<img src="docs/screenshots/05-cinemax.png" alt="Xem chung" width="150"> <img src="docs/screenshots/06-cinemax.png" alt="Hồ sơ" width="150">
+<img src="docs/screenshots/05-cinemax.png" alt="Xem chung" width="150"> <img src="docs/screenshots/06-cinemax.png" alt="Hồ sơ" width="150"> <img src="docs/screenshots/09-cinemax.png" alt="Trình phát phim" width="150">
 
 ### Nội dung phim
 
